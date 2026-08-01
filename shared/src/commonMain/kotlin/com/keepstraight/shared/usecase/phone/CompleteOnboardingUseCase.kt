@@ -1,0 +1,14 @@
+package com.keepstraight.shared.usecase.phone
+
+import com.keepstraight.shared.repository.DeviceSyncGateway
+import com.keepstraight.shared.repository.PreferencesRepository
+
+class CompleteOnboardingUseCase(
+    private val preferencesRepository: PreferencesRepository,
+    private val deviceSyncGateway: DeviceSyncGateway,
+) {
+    suspend operator fun invoke() {
+        preferencesRepository.setOnboardingComplete(true)
+        deviceSyncGateway.syncAllPreferences()
+    }
+}
