@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Keep Straight</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Welcome to Keep Straight</string>
+    <string name="onboarding_welcome_body">Your watch monitors posture and alerts you when you slump. Let\'s get set up.</string>
+    <string name="onboarding_pair_title">Pair your watch</string>
+    <string name="onboarding_pair_body">Make sure your Wear OS watch is connected via Bluetooth, then select it below.</string>
+    <string name="onboarding_pair_refresh">Refresh watches</string>
+    <string name="onboarding_pair_none">No watches found. Open Bluetooth settings and try again.</string>
+    <string name="onboarding_notifications_title">Enable notifications</string>
+    <string name="onboarding_notifications_body">Allow notifications so Keep Straight can alert you on your phone when you slump.</string>
+    <string name="onboarding_notifications_open">Open notification settings</string>
+    <string name="onboarding_battery_title">Battery optimization</string>
+    <string name="onboarding_battery_body">Disable battery optimization so the watch connection stays reliable in the background.</string>
+    <string name="onboarding_battery_open">Open battery settings</string>
+    <string name="onboarding_battery_ack">I\'ve disabled battery optimization</string>
+    <string name="onboarding_calibrate_title">Calibrate posture</string>
+    <string name="onboarding_calibrate_body">Sit up straight and calibrate your baseline posture. You can do this now or later from the dashboard.</string>
+    <string name="onboarding_calibrate_skip">Skip for now</string>
+    <string name="onboarding_sensitivity_title">Choose sensitivity</string>
+    <string name="onboarding_sensitivity_body">How quickly should Keep Straight detect slumping?</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_finish">Get started</string>
+    <string name="onboarding_back">Back</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_recalibrate">Recalibrate</string>
+    <string name="dashboard_monitoring">Monitoring</string>
+    <string name="dashboard_alerts">Alerts</string>
+    <string name="dashboard_history">History</string>
+    <string name="dashboard_alert_settings">Alert settings</string>
+    <string name="dashboard_sensitivity">Sensitivity</string>
+    <string name="dashboard_settings">Settings</string>
+    <string name="dashboard_connected">Watch connected</string>
+    <string name="dashboard_connected_subtitle">Your watch is monitoring posture in the background.</string>
+    <string name="dashboard_recalibrate_subtitle">Use after changing chair, desk, or sitting position.</string>
+    <string name="dashboard_monitoring_subtitle">Turn posture detection on or off on your watch.</string>
+    <string name="dashboard_alerts_subtitle">Pause or resume vibration and visual alerts.</string>
+    <string name="dashboard_requires_watch">Connect your watch to change this.</string>
+    <string name="dashboard_disconnected">Watch disconnected</string>
+    <string name="dashboard_reconnect">Reconnect</string>
+
+    <!-- Banners -->
+    <string name="banner_battery_title">Battery optimization enabled</string>
+    <string name="banner_battery_body">Background sync may be unreliable. Tap to fix.</string>
+    <string name="banner_battery_dismiss">Dismiss</string>
+    <string name="banner_connection_title">Watch not connected</string>
+    <string name="banner_connection_body">Reconnect your watch to resume posture monitoring.</string>
+
+    <!-- Calibrate -->
+    <string name="calibrate_title">Calibrate posture</string>
+    <string name="calibrate_instructions">Sit up straight with your watch on your wrist. Hold still while we capture your baseline.</string>
+    <string name="calibrate_countdown">Hold still… %1$d</string>
+    <string name="calibrate_capturing">Capturing posture…</string>
+    <string name="calibrate_start">Start calibration</string>
+    <string name="calibrate_success">Calibration saved</string>
+    <string name="calibrate_error">Calibration failed. Check your watch connection.</string>
+    <string name="calibrate_not_connected">Connect your watch before calibrating.</string>
+
+    <!-- History -->
+    <string name="history_title">History</string>
+    <string name="history_empty">No posture events yet.</string>
+    <string name="history_error">Could not load history. Try again later.</string>
+    <string name="history_today">Today</string>
+    <string name="history_yesterday">Yesterday</string>
+    <string name="event_slump">Slump detected</string>
+    <string name="event_calibrated">Calibrated</string>
+    <string name="event_paused">Monitoring paused</string>
+    <string name="event_resumed">Monitoring resumed</string>
+    <string name="event_duration">Duration: %1$s</string>
+
+    <!-- Alert settings -->
+    <string name="alert_settings_title">Alert settings</string>
+    <string name="alert_haptic">Watch haptic</string>
+    <string name="alert_visual">Watch visual</string>
+    <string name="alert_sound">Watch sound</string>
+    <string name="alert_phone_notification">Phone notification</string>
+
+    <!-- Sensitivity -->
+    <string name="sensitivity_title">Sensitivity</string>
+    <string name="sensitivity_strict">Strict — alerts quickly</string>
+    <string name="sensitivity_normal">Normal — balanced</string>
+    <string name="sensitivity_relaxed">Relaxed — fewer alerts</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_paired_watch">Paired watch</string>
+    <string name="settings_no_watch">None paired</string>
+    <string name="settings_notifications">Notification settings</string>
+    <string name="settings_battery">Battery optimization</string>
+    <string name="settings_bluetooth">Bluetooth settings</string>
+    <string name="settings_app_details">App info</string>
+    <string name="settings_unpair">Unpair watch</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_posture">Posture alerts</string>
+    <string name="notification_channel_posture_desc">Alerts when slumping is detected</string>
+    <string name="notification_slump_title">Posture alert</string>
+    <string name="notification_slump_body">You\'ve been slumping for %1$s</string>
+
+    <!-- Common -->
+    <string name="action_back">Back</string>
+    <string name="action_save">Save</string>
+</resources>
