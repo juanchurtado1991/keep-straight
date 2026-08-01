@@ -1,0 +1,46 @@
+# Gradle
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+.kotlin/
+
+# Local machine config
+local.properties
+*.hprof
+
+# Android artifacts
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+*.tmp
+*.swp
+*~
+
+# Cursor / editor
+.cursor/
+*.code-workspace
+
+# Secrets
+*.jks
+*.keystore
+google-services.json
+secrets.properties
