@@ -1,6 +1,8 @@
 # KeepStraight — Product Specification
 
-This document defines **exactly** how KeepStraight must behave in v1. Implementation details may change; **user-visible behavior and product rules must not**.
+**This document is the single source of truth** for KeepStraight v1. Implementation (`shared`, `androidApp`, `wearApp`) must converge to match it. Where the codebase diverges today, see [§15 Code parity gaps](#15-code-parity-gaps).
+
+User-visible behavior and product rules defined here **must not** ship differently without updating this document first.
 
 ---
 
@@ -15,11 +17,13 @@ This document defines **exactly** how KeepStraight must behave in v1. Implementa
 
 **Language:** English only (UI copy, history labels, notifications).
 
-**Pairing model:** Exactly **one watch ↔ one phone**. The phone app stores a single `pairedWatchId` and ignores all other Wear nodes.
+**Pairing model:** Exactly **one watch ↔ one phone**. The phone app stores a single `pairedWatchId` (and optional `PairedDeviceInfo`) and **ignores all messages** from any other Wear node.
 
 **Cloud:** None in v1. All history stays on the phone locally.
 
 **History export:** Not in v1.
+
+**Design intent:** Minimalist, clean UI on phone (Material 3) and watch (single status line). Reliable posture detection with **no false positives from typing** or brief movements — only sustained slump while classified as sitting.
 
 ---
 
@@ -35,26 +39,39 @@ KeepStraight **only** targets **sitting** posture. It does **not** monitor stand
 
 ### 3.1 Watch (minimum baseline)
 
-**Samsung Galaxy Watch 4** (40 mm / 44 mm), Wear OS 3+, API 30+.
+**Samsung Galaxy Watch 4** (40 mm / 44 mm), Wear OS 3+, API 30+ (`minSdk 30`).
 
 Required capabilities:
 
-- Accelerometer (sampled ~2 Hz effective via 500 ms tick + sensor events)
-- Step counter (`TYPE_STEP_COUNTER`)
-- Off-body detection (Samsung `TYPE_LOW_LATENCY_OFFBODY_DETECT` preferred; software fallback if missing)
-- Foreground service with `FOREGROUND_SERVICE_HEALTH`
-- Haptic actuator
-- Wearable Data Layer sync to paired phone
-- Round display (minimal optional UI)
+| Capability | Requirement |
+|------------|-------------|
+| Accelerometer | ~2 Hz effective (`SENSOR_DELAY_NORMAL`, 500 ms service tick + events) |
+| Step counter | `TYPE_STEP_COUNTER` |
+| Off-body detect | Samsung `TYPE_LOW_LATENCY_OFFBODY_DETECT` primary; software fallback if missing |
+| Foreground service | `FOREGROUND_SERVICE_HEALTH` |
+| Haptic | `VibrationEffect` double pulse |
+| Sync | Wearable Data Layer to paired phone |
+| Display | Round, small; optional 1-line status UI |
+
+**Watch UI baseline (GW4):** centered content, **max 14 sp** status text, safe-area margins for round screen. No complications or tiles in v1.
+
+**Speaker:** Limited on GW4. Sound alerts are **best-effort**; haptic + visual are primary.
 
 ### 3.2 Phone
 
-- Android API 30+ (`minSdk 30`)
-- Bluetooth pairing with watch via system/Galaxy Wearable
+- Android API 30+ (`minSdk 30`), `compileSdk 36`, `targetSdk 35`
+- Bluetooth pairing with watch via system / Galaxy Wearable
 - Google Play services (Wearable API)
-- Recommended: battery optimization **exempt** for reliable background sync
+- Manifest permission: `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` for direct exemption intent
+- Battery optimization **exempt** recommended for reliable background sync
 
-### 3.3 Future platforms (out of v1 scope)
+### 3.3 QA gate (mandatory before v1 release)
+
+Full manual verification on **Galaxy Watch 4 physical device** or **Wear OS Round API 30 emulator** profiled for GW4:
+
+- Boot auto-start, off-wrist pause/resume, slump + 5 s alert loop, sync to phone, sensitivity change, 2 h disconnect + Reconnect, battery deep link, DND suppression, round UI readable.
+
+### 3.4 Future platforms (out of v1 scope)
 
 Architecture in `shared` prepares for iOS / watchOS, but v1 ships **Android phone + Wear OS watch only**.
 
@@ -66,17 +83,23 @@ Architecture in `shared` prepares for iOS / watchOS, but v1 ships **Android phon
 
 Calibration captures the IMU **pitch** and **roll** of the user's **good sitting posture** while wearing the watch.
 
-- **First calibration:** mandatory during phone onboarding before monitoring is useful.
-- **Recalibration:** always available from phone (dashboard hero card + settings). Same flow as initial calibration.
-- **Capture location:** IMU samples are read on the **watch** (2–3 s average after countdown).
-- **Capture UI:** on the **phone** (3-second countdown, then “Capturing…”).
-- **On success:** new baseline syncs to watch; slump state resets; phone logs `CALIBRATED` in history.
-- **On failure:** timeout (~15 s) or disconnect → error state; **previous calibration retained**.
-- Recalibration does **not** change sensitivity, alert toggles, or monitoring enabled flags—only `basePitch` / `baseRoll`.
+| Rule | Behavior |
+|------|----------|
+| First calibration | Mandatory during phone onboarding before monitoring starts |
+| Recalibration | Always available from **Dashboard hero card** and **Settings → Recalibrate Posture** |
+| Capture location | **Watch** averages IMU 2–3 s after phone countdown |
+| Capture UI | **Phone**: 3 s countdown (`Hold still… N`), then “Capturing…” |
+| During capture | Posture evaluation pauses briefly (~3 s); monitoring service stays alive |
+| On success | Baseline syncs to watch; slump state + alert loop cleared; history logs `CALIBRATED`; toast *“Posture recalibrated”* |
+| On failure | Timeout (~15 s) or disconnect → error; **previous calibration retained** |
+| Scope | Recalibration changes only `basePitch` / `baseRoll` — not sensitivity, alert prefs, or monitoring toggles |
+| Connection | Requires paired watch **connected**; otherwise show *“Connect your watch to recalibrate”* |
+
+**Recalibrate subtitle (dashboard):** *“Use after changing chair, desk, or sitting position.”*
 
 ### 4.2 Sensitivity presets
 
-Phone setting maps to angular tolerances on watch:
+Phone setting maps to angular tolerances synced in `PostureCalibrationConfig`:
 
 | Preset | Slump tolerance (°) | Standing pitch delta (°) | Standing roll delta (°) |
 |--------|---------------------|--------------------------|-------------------------|
@@ -84,47 +107,79 @@ Phone setting maps to angular tolerances on watch:
 | Normal | 10 | 18 | 12 |
 | Relaxed | 15 | 22 | 15 |
 
-Changing sensitivity on phone updates DataStore and re-syncs `PostureCalibrationConfig` to watch (same baseline angles).
+Changing sensitivity updates DataStore and re-syncs config to watch (**same** baseline angles; no re-calibration required).
+
+UI: segmented control **Strict | Normal | Relaxed** with short English explanation per preset. Reachable from Dashboard navigation and **Settings → Sensitivity**.
 
 ### 4.3 Activity classification (watch)
 
-Before evaluating slump, the watch classifies activity:
+Multi-signal fusion with **hysteresis** — no single-sample transitions. Pitch/roll smoothed with a **fixed 5-sample circular buffer** before comparison.
 
-| State | Meaning | Posture monitoring |
-|-------|---------|-------------------|
-| `SITTING` | Default when not walking/standing/off-wrist | **Active** — slump timer runs |
-| `WALKING` | ≥3 steps in 10 s window | Paused — analyzer reset |
-| `STANDING` | Pitch/roll deviates beyond standing thresholds **sustained 30 s** | Paused — analyzer reset |
-| `NOT_WORN` | Off-body sensor or heuristic | Paused — sensors may stop |
-| `AMBIGUOUS` | Transitional (e.g. standing candidate < 30 s) | Treated as **not sitting** for slump |
+#### Input signals
 
-**Important:** Bad slump angles that also look “standing” use **separate thresholds**: slump uses **tighter** tolerance than standing detection so users can accumulate 5 min of slump while technically slightly slouched but still classified as sitting.
+| Signal | Source | Sitting | Walking | Standing |
+|--------|--------|---------|---------|----------|
+| Step delta | Step counter, 10 s window | ~0 | ≥ 3 steps | ~0 |
+| Pitch vs baseline | Accelerometer vs `basePitch` | within slump + standing margin | N/A | deviates > standing pitch delta sustained |
+| Roll vs baseline | vs `baseRoll` | within range | variable | arm-at-side: roll shift > standing roll delta |
+| Gravity magnitude | Accelerometer vector length | stable ~1 g band | unstable | stable but angle wrong |
+| Vertical wrist pose | Dominant `az` axis | forearm ~horizontal (desk) | oscillating | arm ~vertical (hanging) |
+
+#### State machine
+
+```
+SITTING   → WALKING     if stepDelta >= 3 in 10 s window
+SITTING   → STANDING    if !walking AND (pitchDelta > standingPitch OR rollDelta > standingRoll) for >= 30 s
+STANDING  → SITTING     if angles return within sitting band for >= 15 s
+WALKING   → SITTING     if stepDelta == 0 for >= 20 s AND sitting angles restored
+AMBIGUOUS → (not sitting for slump)  transitional / standing candidate < 30 s
+NOT_WORN  → forced when off-wrist detected
+```
+
+| State | Posture monitoring |
+|-------|-------------------|
+| `SITTING` | **Active** — slump timer runs |
+| `WALKING` | Paused — analyzer reset |
+| `STANDING` | Paused — analyzer reset |
+| `NOT_WORN` | Paused — sensors may stop |
+| `AMBIGUOUS` | Treated as **not sitting** — no slump alerts |
+
+**Slump vs standing thresholds:** Slump uses **tighter** angular tolerance than standing detection so a user can accumulate 5 min of slump while still classified as `SITTING`.
 
 ### 4.4 Slump detection (watch)
 
-While `SITTING` and monitoring is enabled:
+While `activityState == SITTING` and monitoring is enabled:
 
-1. Compare current pitch/roll to calibrated baseline using **slump tolerance** for active sensitivity preset.
-2. If **bad posture** (either pitch or roll beyond tolerance):
-   - Start or continue slump timer.
-3. If **good posture**:
-   - Reset slump timer and any active slump episode.
-4. When bad posture is continuous for **5 minutes** (`300_000 ms`):
-   - Fire **initial alert** (haptic/visual/sound per preferences, respecting DND).
-   - Emit **one** `SLUMP_DETECTED` event to phone (with duration seconds).
-5. If user **does not correct** within **5 seconds** after initial alert:
-   - Repeat alert every **5 seconds** until posture corrected.
-   - Repeat alerts **do not** emit additional history events (only the initial event is logged).
+1. Compare smoothed pitch/roll to baseline using **slump tolerance** for active sensitivity preset.
+2. **Bad posture** (pitch or roll beyond tolerance): start or continue slump timer.
+3. **Good posture:** reset slump timer and active slump episode.
+4. Bad posture continuous for **`slumpDurationThresholdMs` (default 5 min / 300_000 ms)**:
+   - Fire **initial alert** (channels per `AlertPreferences`, respecting DND).
+   - Emit **one** `SLUMP_DETECTED` to phone with `durationSeconds`.
+5. If not corrected within **5 s** after initial alert:
+   - Repeat alert every **`repeatAlertIntervalMs` (default 5_000 ms)** until corrected.
+   - Repeat alerts **do not** create additional history rows.
 
-When user corrects posture or leaves sitting (walk/stand/off-wrist), slump episode ends and timers reset.
+Episode ends when posture corrected or user walks, stands, or removes watch.
 
-### 4.5 Do Not Disturb
+### 4.5 Anti false-positive design
+
+KeepStraight must **not** alert on typing, brief fidgets, or momentary slouch:
+
+- **5-minute sustained** bad posture required before first alert.
+- Activity classifier pauses slump evaluation when not `SITTING`.
+- **Sustained transition windows** (15–30 s) for standing/walking — not single samples.
+- **5-sample smoothing** on pitch/roll before angle comparison.
+- **AMBIGUOUS** states never accumulate slump time.
+- Off-wrist forces `NOT_WORN` — no desk/charger false slumps.
+
+### 4.6 Do Not Disturb
 
 If watch system DND is active (interruption filter ≠ ALL):
 
-- Alerts are **suppressed** (no haptic, flash, sound).
+- Alerts **suppressed** (no haptic, flash, sound).
 - Monitoring and slump tracking **continue**.
-- Watch UI state may show `DND_ACTIVE`.
+- Watch UI may show `DND_ACTIVE`.
 
 ---
 
@@ -132,24 +187,36 @@ If watch system DND is active (interruption filter ≠ ALL):
 
 ### 5.1 Auto-start & lifecycle
 
-- On boot: if `monitoring_enabled` flag is true in watch prefs, start `PostureMonitoringService` automatically.
-- User **does not** need to open the watch app for monitoring to run.
-- Optional watch app shows **one status line** (Monitoring / Not worn / Paused / etc.) and white flash overlay on visual alerts when app is foreground.
+- **Boot:** if `monitoring_enabled` in watch prefs → start `PostureMonitoringService` automatically.
+- **Wear again:** when user puts watch back on wrist after off-body → resume prior state (`ACTIVE`, `PHONE_RETRY`, etc.) automatically.
+- User **never** needs to open the watch app for monitoring.
+- Optional watch app: **one status line** (*Monitoring*, *Not worn*, *Standing*, *Paused*, *Phone disconnected*) + white flash overlay on visual alerts when foreground.
 
 ### 5.2 Foreground service
 
-- Runs as foreground service with persistent notification (“Monitoring posture” or state-specific text).
-- Samples accelerometer + step counter on ~500 ms tick.
-- Processes samples through `PostureMonitoringEngine` in `shared`.
+- Persistent notification (*Monitoring posture* or state-specific text, e.g. *Watch not worn — monitoring paused*).
+- Samples accelerometer + step counter on **~500 ms** tick.
+- Processes through `PostureMonitoringEngine` in `shared`.
+- On service start: **pre-create** haptic waveform object (zero allocation on alert hot path).
 
 ### 5.3 Off-wrist behavior
 
-When watch is removed:
+**Primary (hardware):** `TYPE_LOW_LATENCY_OFFBODY_DETECT` — `0` = off body, `1` = on wrist.
 
-- Transition to `NOT_WORN`.
-- Stop posture evaluation and alerts.
-- Notification updates to reflect not worn.
-- When worn again: resume prior monitoring logic automatically.
+**Software fallback** when hardware sensor unavailable:
+
+- Acceleration variance near-zero for **> 60 s** with no step motion → likely on desk/charger.
+- Sudden stable face-up flat orientation + lack of wrist micro-movements.
+- Magnitude variance threshold combined with gravity vector checks.
+
+**When off-wrist:**
+
+- State → `NOT_WORN`.
+- **Stop** accelerometer/step listeners (save battery).
+- No posture evaluation, no alerts.
+- Notification: *Watch not worn — monitoring paused*.
+
+**When on-wrist again:** resume sensors and prior monitoring state automatically.
 
 ### 5.4 Watch monitoring states (user-visible)
 
@@ -157,289 +224,356 @@ When watch is removed:
 |-------|------|--------|---------|
 | `ACTIVE` | On wrist, sitting | On | On |
 | `NOT_SITTING` | Walking or standing | Off | On |
-| `NOT_WORN` | Off body | Off | Reduced/off |
-| `ALERTS_PAUSED` | Phone sent pause alerts | Off | On |
-| `ALGORITHM_OFF` | Phone disabled monitoring | Off | Off |
-| `PHONE_RETRY` | Phone unreachable, retry window | On | On |
+| `NOT_WORN` | Off body | Off | **Off** |
+| `ALERTS_PAUSED` | Phone sent `PAUSE_ALERTS` | Off | On |
+| `ALGORITHM_OFF` | Phone sent `STOP_ALGORITHM` | Off | Off |
+| `PHONE_RETRY` | Phone unreachable, within 2 h window | On | On |
 | `PHONE_DISCONNECTED_PAUSED` | Phone unreachable ≥ 2 h | Off | Off |
 | `DND_ACTIVE` | System DND | Suppressed | On |
 
 ### 5.5 Alerts (watch)
 
-Configurable from phone (`AlertPreferences`), synced to watch:
+Synced from phone via `AlertPreferences`:
 
 | Channel | Default | Behavior |
 |---------|---------|----------|
-| Haptic | On | Double pulse pattern |
-| Visual | On | Broadcast flash; white overlay if MainActivity visible |
-| Sound | Off | Default notification ringtone; stop previous before new |
+| Haptic | On | **Double pulse:** 120 ms on → 80 ms off → 120 ms on; **low–medium amplitude**; waveform pre-created at service start |
+| Visual | On | Broadcast flash intent; white full-screen overlay if `MainActivity` visible |
+| Sound | Off | Default notification ringtone; **stop previous** ringtone before playing new; graceful no-op if no speaker |
 
-Master `alertsEnabled` toggle on phone sends `PAUSE_ALERTS` / `RESUME_ALERTS` to watch.
+Master **Alerts** toggle on phone → `PAUSE_ALERTS` / `RESUME_ALERTS` on watch (algorithm keeps running).
 
 ### 5.6 Phone connection policy (watch side)
 
-The phone is **required** for full product operation (history, settings sync). If watch cannot deliver events to phone:
+Phone is **required** for history and settings sync.
 
-1. Enqueue events in local **PendingSyncQueue** (not unlimited history—queue only).
-2. Start **ConnectionRetryManager**: alarm every **15 minutes**.
-3. Continue retrying for up to **2 hours** from first failure.
-4. During retry window: state `PHONE_RETRY`; monitoring/alerts continue.
-5. After **2 hours** exhausted: state `PHONE_DISCONNECTED_PAUSED`; monitoring stops until user taps **Reconnect** on phone (`RESUME_CONNECTION` control message).
+If watch cannot deliver events to phone:
 
-On successful sync: flush queue, cancel retry alarms, clear retry state.
+1. Enqueue in **`PendingSyncQueue`** file `pending_sync.bin` (survives watch reboot).
+2. Store **all** undelivered events during the retry window (no history on watch — queue only).
+3. Start **ConnectionRetryManager**: alarm every **15 minutes**.
+4. Retry for up to **2 hours** from first failure → state `PHONE_RETRY`; monitoring/alerts continue.
+5. After 2 h exhausted → `PHONE_DISCONNECTED_PAUSED`; monitoring stops until phone sends `RESUME_CONNECTION` via **Reconnect**.
+
+On successful sync: flush queue to phone (batch), cancel retry alarms, clear retry state. Phone deduplicates on insert (`timestamp` + `eventType` unique index).
 
 ---
 
 ## 6. Phone application behavior
 
-### 6.1 Onboarding (first launch)
+### 6.1 System deep links
 
-Sequential steps; user cannot finish without required items:
+Central `SystemIntentsHelper` opens system settings:
 
-1. **Welcome** — explains phone + watch requirement.
-2. **Pair watch** — list Wear nodes; user selects **one**; stored as `pairedWatchId`. Refresh + Bluetooth settings deep link if none found.
-3. **Notifications** — request `POST_NOTIFICATIONS` (Android 13+); link to notification settings.
-4. **Battery** — explain unrestricted battery; deep link to exemption; user acknowledges checkbox (or auto-skip if already exempt).
-5. **Calibrate** — navigates to calibration flow (mandatory before finish).
-6. **Sensitivity** — Strict / Normal / Relaxed (default Normal).
+| UI action | Intent | When |
+|-----------|--------|------|
+| Allow unrestricted battery | `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` → app package | Onboarding step 4; Settings; battery banner **Fix** |
+| Battery settings fallback | `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` | If direct REQUEST fails or OEM blocks |
+| Notification settings | `ACTION_APP_NOTIFICATION_SETTINGS` + `EXTRA_APP_PACKAGE` | Onboarding step 3; Alert settings; Settings |
+| App permissions | `ACTION_APPLICATION_DETAILS_SETTINGS` | Settings |
+| Bluetooth / pairing | `ACTION_BLUETOOTH_SETTINGS` | Onboarding step 2 if no watch; Settings change-watch |
+| Wear companion (optional) | Launch `com.google.android.apps.wear.companion` if installed | Onboarding *Pair your watch* helper |
 
-On completion: `onboardingComplete = true`, sync all preferences + monitoring/alerts state to watch, request sync.
+Battery restriction detection: `PowerManager.isIgnoringBatteryOptimizations(packageName)` — reactive banner via Flow.
 
-### 6.2 Dashboard
+### 6.2 Onboarding (first launch)
 
-- **Battery banner** if phone battery optimization still restricts app (dismissible per session; re-check on resume).
-- **Connection banner** if paired watch not reachable — **Reconnect** button.
+Sequential steps; cannot finish without required items:
+
+1. **Welcome** — *“KeepStraight monitors your posture while sitting. Requires your phone and one paired watch.”*
+2. **Pair your watch** — list Wear nodes; user selects **exactly one** → save `pairedWatchId` + `PairedDeviceInfo.pairedAt`.
+   - **0 nodes:** **Open Bluetooth settings** + optional **Open Wear companion** links; Refresh button.
+   - **>1 node:** block Continue until user unpairs extras (copy explains one watch only).
+3. **Phone notifications** — request `POST_NOTIFICATIONS` (Android 13+); if denied → **Open notification settings**.
+4. **Battery optimization** — explain background sync need; primary **Allow unrestricted battery**; secondary **Open battery settings** fallback; checkbox *“I've allowed unrestricted battery”* (auto-checked if already exempt).
+5. **Watch permissions** — guide user to grant on watch: `BODY_SENSORS`, `ACTIVITY_RECOGNITION`, FGS notification (remote/on-watch prompts).
+6. **Calibrate** — mandatory first calibration flow (§6.4).
+7. **Sensitivity** — Strict / Normal / Relaxed (default Normal).
+
+On completion: `onboardingComplete = true`; sync all prefs + calibration to paired watch only; send `START_ALGORITHM`; request sync flush.
+
+### 6.3 Dashboard
+
+- **Battery banner** if phone battery restricted — copy: *“Background restrictions may delay posture history sync”*; **Fix** → battery intent; dismissible per session; re-check on resume.
+- **Connection banner** if paired watch unreachable — **Reconnect** button.
 - **Connected card** when watch online.
-- **Recalibrate** hero card (disabled if not connected).
-- Toggles (disabled if not connected, with subtitle “Connect your watch…”):
+- **Recalibrate** hero card (disabled if disconnected) — title *Recalibrate Posture* with subtitle (§4.1).
+- Toggles (disabled if disconnected, subtitle *“Connect your watch…”*):
   - **Posture monitoring** → `START_ALGORITHM` / `STOP_ALGORITHM`
   - **Alerts** → `RESUME_ALERTS` / `PAUSE_ALERTS`
 - Navigation: History, Alert settings, Sensitivity, Settings.
 
-### 6.3 Calibration / recalibration flow (phone UI)
+### 6.4 Calibration / recalibration flow
 
-1. User sits in good posture, watch worn, phone connected.
-2. Tap **Calibrate / Recalibrate**.
-3. Phone shows 3-second countdown (`Hold still… N`).
-4. Phone sends `CALIBRATE_CAPTURE` to watch.
-5. Watch averages IMU ~3 s, returns `CalibrationCaptureResult`.
-6. Phone saves pitch/roll, builds config with current sensitivity, syncs to watch.
-7. Success message; auto-navigate back after ~1.5 s.
-8. History records `CALIBRATED`.
+1. User sits in good posture; watch on wrist; phone connected.
+2. Tap **Calibrate Posture** (first time) or **Recalibrate Posture**.
+3. Phone: 3 s countdown *Hold still… 3, 2, 1*.
+4. Phone → watch: `CALIBRATE_CAPTURE`.
+5. Watch averages IMU ~3 s (evaluation paused); returns `CalibrationCaptureResult`.
+6. Phone saves pitch/roll; builds `PostureCalibrationConfig` with current sensitivity; syncs via `/keepstraight/calibration`.
+7. Watch resets slump state; success toast; auto-navigate back ~1.5 s.
+8. History: `CALIBRATED`.
 
-**Timeout:** 15 s waiting for watch response → error, retry available.
+**Timeout:** 15 s without watch response → error, retry available, previous baseline kept.
 
-### 6.4 Alert settings
+Safe during active monitoring — only brief capture pause.
 
-Per-channel toggles synced to watch + phone behavior:
+### 6.5 Alert settings
+
+Per-channel toggles (synced to watch unless noted):
 
 - Haptic (watch)
 - Visual (watch)
 - Sound (watch)
-- Phone notification (phone only; requires `alertsEnabled` master toggle on phone)
+- Phone notification (phone only; requires master **Alerts** enabled on dashboard)
 
-### 6.5 Phone notifications
+Deep link to system notification settings available.
 
-When `SLUMP_DETECTED` event arrives and:
+### 6.6 Phone notifications
 
-- `alertsEnabled` is true, and
-- `phoneNotificationEnabled` in alert preferences is true,
+When `SLUMP_DETECTED` arrives **and** `alertsEnabled` **and** `phoneNotificationEnabled`:
 
 → show slump notification with duration context.
 
-### 6.6 History
+### 6.7 History
 
-- Stored in **Room** on phone only; **unlimited** retention (no auto-delete in v1).
-- Paging UI grouped by day: Today, Yesterday, or `EEEE, MMM d` (Locale US).
-- Event types:
+- **Room** on phone; **unlimited** retention; **Paging 3** list UI.
+- Grouped by day: *Today*, *Yesterday*, or `EEEE, MMM d` (Locale US).
+- Empty state: friendly English copy when no events.
 
-| Type | Meaning |
-|------|---------|
-| `SLUMP_DETECTED` | Slump episode reached 5 min threshold (one per episode) |
-| `CALIBRATED` | Successful calibration/recalibration |
-| `MONITORING_PAUSED` | Alerts paused via toggle |
-| `MONITORING_RESUMED` | Alerts resumed |
+| Type | Meaning | UI |
+|------|---------|-----|
+| `SLUMP_DETECTED` | Slump reached 5 min threshold (one row per episode) | Distinct icon/label; show duration seconds |
+| `CALIBRATED` | Successful calibration/recalibration | Distinct icon/label from slump |
+| `MONITORING_PAUSED` | User paused **Alerts** toggle (not posture monitoring) | Audit trail |
+| `MONITORING_RESUMED` | User resumed **Alerts** toggle | Audit trail |
 
-Slump rows show duration (time spent slumped at alert moment).
+**No export** in v1. **No delete-all** in v1 (see §12.2).
 
-**No export** button in v1.
+### 6.8 Settings
 
-### 6.7 Settings
-
-- Show paired watch id or “No watch paired”.
-- Deep links: Notifications, Battery, Bluetooth, App details.
-- **Unpair watch** (clears `pairedWatchId`).
-
-### 6.8 Reconnect
-
-Dashboard **Reconnect** (or connection banner):
-
-1. Send `RESUME_CONNECTION` to watch.
-2. Sync all preferences (calibration, sensitivity, alert prefs, monitoring, alerts).
-3. Request sync flush from watch.
+| Setting | Action |
+|---------|--------|
+| Paired watch | Show `pairedWatchId` or *No watch paired* |
+| Notifications | Deep link → notification settings |
+| Battery / background | Deep link → battery exemption (+ fallback) |
+| Bluetooth | Deep link → Bluetooth settings |
+| App details | Deep link → application details |
+| **Recalibrate Posture** | In-app calibration flow (§6.4) |
+| **Sensitivity** | In-app preset picker (§4.2) |
+| **Change paired watch** | Clear `pairedWatchId`; navigate to onboarding pair step; old history **retained** (mixed) |
+| Unpair watch | Clear pairing without guided re-pair (shortcut to change flow) |
 
 ---
 
 ## 7. Sync protocol (phone ↔ watch)
 
-Transport: Google Wearable **Message API** (v1). Paths under `/keepstraight/…`.
+Transport: Google Wearable **Message API**. Serialization: **Ghost Serialization 1.3.0**.
+
+**Single-watch enforcement:** phone stores `pairedWatchId`; ignores inbound from other nodes; all outbound targets paired node only.
 
 | Path | Direction | Payload |
 |------|-----------|---------|
 | `/keepstraight/calibration` | Phone → watch | `PostureCalibrationConfig` |
 | `/keepstraight/control` | Phone → watch | `WatchControlMessage` |
 | `/keepstraight/preferences` | Phone → watch | `AlertPreferences` |
-| `/keepstraight/calibrate-request` | (reserved) | — |
+| `/keepstraight/calibrate-request` | Reserved | — |
 | `/keepstraight/calibrate-result` | Watch → phone | `CalibrationCaptureResult` |
 | `/keepstraight/events` | Watch → phone | `PostureEvent` |
 | `/keepstraight/events/batch` | Watch → phone | `PostureEventBatch` |
 | `/keepstraight/sync-request` | Phone → watch | empty (flush queue) |
-| `/keepstraight/sync-ack` | (reserved) | — |
-
-Serialization: **Ghost Serialization 1.3.0** (`Ghost.encodeToBytes` / `Ghost.deserialize`).
+| `/keepstraight/sync-ack` | Reserved | — |
 
 ### 7.1 Control commands
 
-| Command | Effect on watch |
-|---------|-----------------|
+| Command | Effect |
+|---------|--------|
 | `START_ALGORITHM` | Enable monitoring service |
 | `STOP_ALGORITHM` | Disable monitoring service |
-| `PAUSE_ALERTS` | Suppress alert dispatch |
-| `RESUME_ALERTS` | Re-enable alerts |
+| `PAUSE_ALERTS` | Suppress alerts; emit `MONITORING_PAUSED` event |
+| `RESUME_ALERTS` | Re-enable alerts; emit `MONITORING_RESUMED` event |
 | `CALIBRATE_CAPTURE` | Start IMU capture window |
-| `RESUME_CONNECTION` | End phone-disconnected pause; restart monitoring; request sync |
+| `RESUME_CONNECTION` | End phone-disconnected pause; restart monitoring; flush sync |
 | `SYNC_PREFERENCES` | Trigger preference sync handling |
 
 ---
 
-## 8. Data & privacy (v1)
+## 8. Data models (Ghost)
 
-- All posture history stays **on phone** local storage.
-- Watch retains only **sync queue** (temporary, for offline phone outages ≤ 2 h policy).
-- No analytics cloud, no account system in v1.
-- No “delete all history” in v1 — see [§12 Known gaps](#12-known-gaps-v1).
+```kotlin
+@GhostSerialization
+enum class SensitivityLevel { STRICT, NORMAL, RELAXED }
+
+@GhostSerialization
+data class PostureCalibrationConfig(
+    val basePitch: Float,
+    val baseRoll: Float,
+    val sensitivity: SensitivityLevel = NORMAL,
+    val slumpDurationThresholdMs: Long = 300_000L,
+    val repeatAlertIntervalMs: Long = 5_000L,
+)
+
+@GhostSerialization
+data class AlertPreferences(
+    val hapticEnabled: Boolean = true,
+    val visualEnabled: Boolean = true,
+    val soundEnabled: Boolean = false,
+    val phoneNotificationEnabled: Boolean = false,
+)
+
+@GhostSerialization
+data class PairedDeviceInfo(
+    val watchNodeId: String,
+    val pairedAt: Long,
+)
+```
+
+Phone persists `pairedWatchId` + `pairedAt` in DataStore. Sensitivity changes rebuild `PostureCalibrationConfig` with same `basePitch`/`baseRoll`.
 
 ---
 
-## 9. Edge cases & explicit non-goals
+## 9. Data & privacy (v1)
 
-### 9.1 Handled edge cases
+- All posture history on **phone** local storage (Room).
+- Watch: **`pending_sync.bin` queue only** — temporary, not user-facing history.
+- No analytics cloud, no accounts.
+- See §12.2 for intentional v1 omissions (delete-all, export).
 
-- User stands up → monitoring pauses, slump resets.
-- User walks → monitoring pauses.
-- Watch removed → pause, no false slump alerts on desk.
-- Phone offline < 2 h → queue events, retry every 15 min.
+---
+
+## 10. UI & design standards
+
+### 10.1 Phone
+
+- **Material 3** Compose; minimalist, spacious layout; clear hierarchy.
+- Cards for dashboard sections; consistent top bar; English strings only.
+- Toggles and primary actions visually distinct; connection/disconnected states obvious (banner + disabled controls).
+
+### 10.2 Watch
+
+- Single centered status line, max **14 sp**, round safe-area padding.
+- No required buttons; service runs without UI.
+- White flash overlay for visual alerts when app open.
+
+---
+
+## 11. Non-functional requirements
+
+| Requirement | Scope |
+|-------------|--------|
+| **Zero-allocation hot path** | `PostureAnalyzer`, `ActivityClassifier`, alert dispatch — no heap alloc per sensor sample or alert fire |
+| **Low power** | 500 ms sample tick; sensors off when off-wrist or algorithm stopped |
+| **Reliability** | Sustained-state algorithms; conservative ambiguous handling |
+| **Sync latency** | Phone toggles/sensitivity apply on watch within normal Wearable message latency |
+
+Verified via unit tests (`shared`) + manual GW4 QA gate (§3.3).
+
+---
+
+## 12. Edge cases & explicit non-goals
+
+### 12.1 Handled edge cases
+
+- Stand up → pause, slump reset.
+- Walk → pause.
+- Watch removed / on desk / charger → off-wrist pause, no false slumps.
+- Phone offline < 2 h → queue all events, retry 15 min.
 - Phone offline ≥ 2 h → full pause until Reconnect.
-- DND on watch → no alerts; tracking continues.
-- Recalibrate during active slump → baseline updates; slump state cleared.
-- Repeat slump alerts every 5 s → no duplicate history spam.
+- DND → no alerts; tracking continues.
+- Recalibrate during slump → new baseline, slump cleared.
+- Repeat alerts every 5 s → one history row per episode.
+- Second watch node → ignored; onboarding blocks multi-watch.
+- Change watch → old history kept on phone.
 
-### 9.2 v1 non-goals
+### 12.2 v1 non-goals
 
 - iOS / Apple Watch shipping.
-- Standalone watch app (no phone).
+- Standalone watch (no phone).
 - Multiple watches or phones per account.
-- History export / CSV / share.
-- Automatic “please recalibrate” reminders.
-- Complications / tiles on watch.
-- Standing desk posture mode.
-- Cloud backup.
+- History export / CSV / share / cloud backup.
+- Automatic recalibration reminders.
+- Watch complications / tiles.
+- Standing-desk posture mode.
+- Delete-all history action.
 
 ---
 
-## 10. Success criteria (acceptance)
+## 13. Success criteria (acceptance)
 
-A v1 release is acceptable when, on **Galaxy Watch 4+** with paired Android phone:
+On **Galaxy Watch 4+** with paired Android phone, all must pass:
 
-1. Onboarding pairs one watch, calibrates, and starts monitoring without opening watch app manually.
-2. Simulated slump ≥ 5 min while sitting triggers alert loop (5 s repeat until fixed).
-3. Walking/standing/off-wrist suppresses slump detection.
-4. Slump events appear in phone history; repeat alerts do not duplicate events.
-5. Phone toggles for monitoring/alerts/sensitivity apply on watch within sync latency.
-6. Phone disconnect triggers retry; Reconnect restores sync and monitoring.
-7. DND suppresses alerts but not tracking.
-8. Recalibrate updates baseline and logs `CALIBRATED`.
-9. Battery optimization banner appears when phone restricted; deep link works.
-10. English UI throughout.
-
----
-
-## 11. Module map (implementation reference)
-
-| Module | Product responsibility |
-|--------|------------------------|
-| `shared` | Domain rules, models, sync paths, use cases, `PostureMonitoringEngine` |
-| `wearApp` | Sensors, FGS, alerts, sync queue, retry alarms, minimal UI |
-| `androidApp` | Onboarding, dashboard, history, settings, Wear sync client, notifications |
+1. Onboarding: pair one watch, grant permissions, calibrate, set sensitivity → monitoring starts without opening watch app.
+2. Slump ≥ 5 min sitting → alert; if not fixed in 5 s → repeat every 5 s until corrected.
+3. Walk / stand / off-wrist → no slump alerts.
+4. One `SLUMP_DETECTED` history row per episode; repeat alerts do not duplicate.
+5. Toggles (monitoring, alerts) and sensitivity apply on watch promptly.
+6. Disconnect → retry; Reconnect → flush queue, restore monitoring.
+7. DND suppresses alerts only.
+8. Recalibrate from dashboard **and** Settings → new baseline, `CALIBRATED` row, slump loop cleared.
+9. Battery banner when restricted; Fix opens exemption flow.
+10. History: Paging 3, day groups, distinct CALIBRATED vs SLUMP presentation.
+11. `MONITORING_PAUSED` / `MONITORING_RESUMED` logged when Alerts toggle used.
+12. English UI throughout.
+13. Manual GW4 QA gate (§3.3) signed off.
 
 ---
 
-## 12. Known gaps (v1)
+## 14. Module map (implementation reference)
 
-These are **accepted limitations** or **known mismatches** between this spec, the original implementation plan, and the current codebase. They do **not** block a v1 release unless marked **blocking**.
-
-### 12.1 Accepted product gaps (ship v1 as-is)
-
-| Gap | Expected behavior in v1 | Future consideration |
-|-----|-------------------------|----------------------|
-| **No delete-all history** | History grows without a bulk-delete action | Add “Clear history” in a later release |
-| **No history export** | No CSV, share sheet, or backup file | Cloud backup or export in a later release |
-| **Mixed history after watch change** | Unpairing or pairing a new watch keeps old events in Room | Optional “start fresh” when changing watch |
-| **No recalibration reminders** | Recalibrate is always available on dashboard; no proactive nudge | Optional reminder after N days or posture drift |
-| **Sound on speakerless watches** | Sound alert is best-effort; no explicit UI if hardware cannot play | Silent fallback only; optional “sound unavailable” hint |
-| **Watch on charger / dock** | Off-body sensor + software fallback treat desk/charger as not worn; may pause monitoring | Tune heuristics if users report false pauses |
-| **Typing / micro-movements** | Slump requires **5 min sustained** bad posture while classified as sitting; no typing-specific mode | Tighter anti-FP heuristics if field reports false alerts |
-
-### 12.2 Onboarding & pairing gaps
-
-| Gap | Spec / plan intent | Current state |
-|-----|-------------------|---------------|
-| **Watch runtime permissions step** | Dedicated onboarding step for watch `BODY_SENSORS`, `ACTIVITY_RECOGNITION`, and FGS notification consent | Phone onboarding goes Battery → Calibrate; watch permissions declared in manifest but not guided from phone flow |
-| **Multiple Wear nodes** | If >1 watch node is visible, user must resolve (unpair extras) before continuing | Phone lists nodes and stores one selection; no explicit block or copy for multiple watches |
-| **Change paired watch flow** | Settings → change watch → clear `pairedWatchId` → re-run pair step | Settings exposes **Unpair watch** only; no guided re-pair flow after unpair |
-| **Recalibrate from Settings** | Same recalibration flow reachable from Settings | Recalibrate hero card on dashboard only; Settings has no recalibrate entry |
-
-### 12.3 Sync & offline queue gaps
-
-| Gap | Spec / plan intent | Current state |
-|-----|-------------------|---------------|
-| **Queue size cap** | Early plan: FIFO cap (~50 events), drop oldest when full | Watch queue file (`pending_sync.bin`) has **no max size**; bounded only by 2 h retry window + device storage |
-| **Deduplication on ingest** | Room unique index on `(timestamp, eventType)` when flushing queue | Implemented in phone DB; not previously documented in sync sections |
-| **Reserved sync paths** | `/keepstraight/calibrate-request`, `/keepstraight/sync-ack` reserved | Defined in `SyncPaths`; unused in v1 flows |
-
-### 12.4 Activity classification gaps (plan vs implementation)
-
-The plan described richer **return-to-sitting** hysteresis and extra IMU signals. v1 implements a **simpler** classifier:
-
-| Planned enhancement | In v1 code |
-|--------------------|------------|
-| STANDING → SITTING after angles in sitting band for **≥ 15 s** | Not implemented — returns to `SITTING` immediately when standing angles drop |
-| WALKING → SITTING after **≥ 20 s** with zero steps and sitting angles restored | Not implemented — `WALKING` ends when step window resets |
-| Extra signals: gravity magnitude stability, vertical wrist (`az`) axis | Not implemented |
-| 5-sample pitch/roll smoothing before comparison | **Implemented** |
-| Standing candidate held **≥ 30 s** before `STANDING` | **Implemented** |
-| `AMBIGUOUS` treated as not sitting (no slump alerts) | **Implemented** |
-
-Conservative standing detection reduces false slump alerts but may keep monitoring paused slightly longer after returning to the desk.
-
-### 12.5 UI & documentation gaps
-
-| Gap | Notes |
-|-----|-------|
-| **History row visuals** | Plan: distinct presentation for `CALIBRATED` vs `SLUMP_DETECTED`; v1 uses text/type only |
-| **Watch UI typography** | Plan: GW4 round safe-area, ~14 sp single status line; implemented minimally but not spec’d pixel-perfect here |
-| **Haptic timing in spec body** | §5.5 says “double pulse”; exact pattern is **120 ms on → 80 ms off → 120 ms on** (pre-built waveform at alert time) |
-| **Non-functional: zero-allocation** | Engineering requirement from plan (hot path in `shared`); not a user-visible product rule — tracked in code review, not acceptance tests |
-
-### 12.6 Platform version note
-
-| Item | Original plan | v1 as built |
-|------|---------------|-------------|
-| Phone `minSdk` | 26 in early scaffold | **30** (aligned with watch baseline) |
-| `compileSdk` | 35 in plan | **36** in Gradle |
+| Module | Responsibility |
+|--------|----------------|
+| `shared` | Domain rules, models, sync paths, use cases, `PostureMonitoringEngine`, zero-alloc hot path |
+| `wearApp` | Sensors, off-body, FGS, alerts, sync queue, retry alarms, minimal UI |
+| `androidApp` | Onboarding, deep links, dashboard, history (Room + Paging 3), settings, Wear sync, notifications |
 
 ---
 
-Behavior elsewhere in this document remains authoritative for **user-visible v1 rules**. Known gaps above describe what is **out of scope**, **deferred**, or **not yet aligned** with the full original plan.
+## 15. Code parity gaps
+
+**Current codebase may not fully match this spec.** Track implementation work here; remove rows as code converges.
+
+### 15.1 Phone app
+
+| Spec reference | Required | Code today |
+|----------------|----------|------------|
+| §6.2 step 5 | Watch permissions onboarding step | Missing — jumps Battery → Calibrate |
+| §6.2 step 2 | Block Continue when >1 Wear node | Missing — lists all nodes |
+| §6.2 | Wear companion deep link | Missing |
+| §6.1 | Battery fallback intent | Missing — only direct REQUEST intent |
+| §6.8 | Settings → Recalibrate Posture | Missing — dashboard only |
+| §6.8 | Settings → Sensitivity | Missing — dashboard nav only |
+| §6.8 | Change paired watch guided flow | Partial — Unpair only |
+| §6.7 | Distinct history icons CALIBRATED vs SLUMP | Missing — text only |
+| §8 | Persist `pairedAt` in DataStore | Partial — `pairedWatchId` only |
+
+### 15.2 Watch app
+
+| Spec reference | Required | Code today |
+|----------------|----------|------------|
+| §5.3 | Full off-body software fallback (60 s variance, face-up) | Partial — magnitude delta heuristic only |
+| §5.5 | Haptic low–medium amplitude | Uses max amplitude (255) |
+| §5.2 | Pre-created haptic waveform at service start | Created on each alert |
+
+### 15.3 Shared / domain
+
+| Spec reference | Required | Code today |
+|----------------|----------|------------|
+| §4.3 | STANDING → SITTING after 15 s in sitting band | Missing — immediate return to SITTING |
+| §4.3 | WALKING → SITTING after 20 s + angles restored | Missing |
+| §4.3 | Gravity magnitude + vertical wrist (`az`) signals | Missing |
+| §4.3 | 5-sample smoothing | **Implemented** |
+| §4.3 | Standing hold 30 s | **Implemented** |
+
+### 15.4 Accepted v1 product omissions (not code bugs)
+
+These are **intentionally out of scope** — do not implement without spec update:
+
+- Delete-all history (§12.2)
+- History export (§12.2)
+- Recalibration reminders (§12.2)
+- Explicit “sound unavailable” UI on watch (§3.1)
+- Cloud backup / accounts (§12.2)
+
+---
 
 See `README.md` for build instructions.
