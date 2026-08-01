@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Keep Straight</string>
+    <string name="notification_channel_name">Posture monitoring</string>
+    <string name="notification_channel_description">Shows when posture monitoring is running on your watch</string>
+    <string name="notification_title">Keep Straight</string>
+    <string name="notification_monitoring_active">Monitoring posture</string>
+
+    <string name="status_monitoring">Monitoring</string>
+    <string name="status_alerts_paused">Alerts paused</string>
+    <string name="status_algorithm_off">Monitoring off</string>
+    <string name="status_not_sitting">Not sitting</string>
+    <string name="status_not_worn">Not worn</string>
+    <string name="status_phone_retry">Phone disconnected</string>
+    <string name="status_phone_paused">Paused — reconnect phone</string>
+    <string name="status_dnd">Do not disturb</string>
+</resources>
