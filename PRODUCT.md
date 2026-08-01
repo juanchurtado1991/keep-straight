@@ -317,7 +317,7 @@ Serialization: **Ghost Serialization 1.3.0** (`Ghost.encodeToBytes` / `Ghost.des
 - All posture history stays **on phone** local storage.
 - Watch retains only **sync queue** (temporary, for offline phone outages ≤ 2 h policy).
 - No analytics cloud, no account system in v1.
-- No “delete all history” in v1 (gap accepted).
+- No “delete all history” in v1 — see [§12 Known gaps](#12-known-gaps-v1).
 
 ---
 
@@ -372,4 +372,74 @@ A v1 release is acceptable when, on **Galaxy Watch 4+** with paired Android phon
 | `wearApp` | Sensors, FGS, alerts, sync queue, retry alarms, minimal UI |
 | `androidApp` | Onboarding, dashboard, history, settings, Wear sync client, notifications |
 
-Behavior in this document is authoritative; see `README.md` for build instructions.
+---
+
+## 12. Known gaps (v1)
+
+These are **accepted limitations** or **known mismatches** between this spec, the original implementation plan, and the current codebase. They do **not** block a v1 release unless marked **blocking**.
+
+### 12.1 Accepted product gaps (ship v1 as-is)
+
+| Gap | Expected behavior in v1 | Future consideration |
+|-----|-------------------------|----------------------|
+| **No delete-all history** | History grows without a bulk-delete action | Add “Clear history” in a later release |
+| **No history export** | No CSV, share sheet, or backup file | Cloud backup or export in a later release |
+| **Mixed history after watch change** | Unpairing or pairing a new watch keeps old events in Room | Optional “start fresh” when changing watch |
+| **No recalibration reminders** | Recalibrate is always available on dashboard; no proactive nudge | Optional reminder after N days or posture drift |
+| **Sound on speakerless watches** | Sound alert is best-effort; no explicit UI if hardware cannot play | Silent fallback only; optional “sound unavailable” hint |
+| **Watch on charger / dock** | Off-body sensor + software fallback treat desk/charger as not worn; may pause monitoring | Tune heuristics if users report false pauses |
+| **Typing / micro-movements** | Slump requires **5 min sustained** bad posture while classified as sitting; no typing-specific mode | Tighter anti-FP heuristics if field reports false alerts |
+
+### 12.2 Onboarding & pairing gaps
+
+| Gap | Spec / plan intent | Current state |
+|-----|-------------------|---------------|
+| **Watch runtime permissions step** | Dedicated onboarding step for watch `BODY_SENSORS`, `ACTIVITY_RECOGNITION`, and FGS notification consent | Phone onboarding goes Battery → Calibrate; watch permissions declared in manifest but not guided from phone flow |
+| **Multiple Wear nodes** | If >1 watch node is visible, user must resolve (unpair extras) before continuing | Phone lists nodes and stores one selection; no explicit block or copy for multiple watches |
+| **Change paired watch flow** | Settings → change watch → clear `pairedWatchId` → re-run pair step | Settings exposes **Unpair watch** only; no guided re-pair flow after unpair |
+| **Recalibrate from Settings** | Same recalibration flow reachable from Settings | Recalibrate hero card on dashboard only; Settings has no recalibrate entry |
+
+### 12.3 Sync & offline queue gaps
+
+| Gap | Spec / plan intent | Current state |
+|-----|-------------------|---------------|
+| **Queue size cap** | Early plan: FIFO cap (~50 events), drop oldest when full | Watch queue file (`pending_sync.bin`) has **no max size**; bounded only by 2 h retry window + device storage |
+| **Deduplication on ingest** | Room unique index on `(timestamp, eventType)` when flushing queue | Implemented in phone DB; not previously documented in sync sections |
+| **Reserved sync paths** | `/keepstraight/calibrate-request`, `/keepstraight/sync-ack` reserved | Defined in `SyncPaths`; unused in v1 flows |
+
+### 12.4 Activity classification gaps (plan vs implementation)
+
+The plan described richer **return-to-sitting** hysteresis and extra IMU signals. v1 implements a **simpler** classifier:
+
+| Planned enhancement | In v1 code |
+|--------------------|------------|
+| STANDING → SITTING after angles in sitting band for **≥ 15 s** | Not implemented — returns to `SITTING` immediately when standing angles drop |
+| WALKING → SITTING after **≥ 20 s** with zero steps and sitting angles restored | Not implemented — `WALKING` ends when step window resets |
+| Extra signals: gravity magnitude stability, vertical wrist (`az`) axis | Not implemented |
+| 5-sample pitch/roll smoothing before comparison | **Implemented** |
+| Standing candidate held **≥ 30 s** before `STANDING` | **Implemented** |
+| `AMBIGUOUS` treated as not sitting (no slump alerts) | **Implemented** |
+
+Conservative standing detection reduces false slump alerts but may keep monitoring paused slightly longer after returning to the desk.
+
+### 12.5 UI & documentation gaps
+
+| Gap | Notes |
+|-----|-------|
+| **History row visuals** | Plan: distinct presentation for `CALIBRATED` vs `SLUMP_DETECTED`; v1 uses text/type only |
+| **Watch UI typography** | Plan: GW4 round safe-area, ~14 sp single status line; implemented minimally but not spec’d pixel-perfect here |
+| **Haptic timing in spec body** | §5.5 says “double pulse”; exact pattern is **120 ms on → 80 ms off → 120 ms on** (pre-built waveform at alert time) |
+| **Non-functional: zero-allocation** | Engineering requirement from plan (hot path in `shared`); not a user-visible product rule — tracked in code review, not acceptance tests |
+
+### 12.6 Platform version note
+
+| Item | Original plan | v1 as built |
+|------|---------------|-------------|
+| Phone `minSdk` | 26 in early scaffold | **30** (aligned with watch baseline) |
+| `compileSdk` | 35 in plan | **36** in Gradle |
+
+---
+
+Behavior elsewhere in this document remains authoritative for **user-visible v1 rules**. Known gaps above describe what is **out of scope**, **deferred**, or **not yet aligned** with the full original plan.
+
+See `README.md` for build instructions.
