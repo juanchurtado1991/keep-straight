@@ -11,6 +11,11 @@ kotlin {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
+    jvm {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -19,6 +24,11 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+        }
+        jvmMain.dependencies {
+            implementation(libs.onnxruntime)
+            implementation(libs.webcam.capture)
+            implementation(libs.webcam.capture.native)
         }
     }
 }

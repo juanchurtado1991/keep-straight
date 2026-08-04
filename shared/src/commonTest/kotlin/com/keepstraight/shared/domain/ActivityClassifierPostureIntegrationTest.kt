@@ -28,6 +28,9 @@ class ActivityClassifierPostureIntegrationTest {
             val activity = classifier.classify(
                 pitch = slumpPitch,
                 roll = 0f,
+                ax = 0f,
+                ay = 9.81f,
+                az = 0f,
                 stepCount = 0,
                 currentTimeMs = t,
             )
@@ -40,7 +43,18 @@ class ActivityClassifierPostureIntegrationTest {
             t += 1_000L
         }
 
-        assertEquals(ActivityState.SITTING, classifier.classify(slumpPitch, 0f, 0, 300_000L))
+        assertEquals(
+            ActivityState.SITTING,
+            classifier.classify(
+                pitch = slumpPitch,
+                roll = 0f,
+                ax = 0f,
+                ay = 9.81f,
+                az = 0f,
+                stepCount = 0,
+                currentTimeMs = 300_000L,
+            ),
+        )
         assertEquals(AnalyzerResult.SLUMP_INITIAL_ALERT, lastResult)
         assertTrue(analyzer.isSlumpActive())
     }
@@ -53,7 +67,15 @@ class ActivityClassifierPostureIntegrationTest {
 
         repeat(301) { second ->
             val t = second * 1_000L
-            val activity = classifier.classify(slumpPitch, 0f, 0, t)
+            val activity = classifier.classify(
+                pitch = slumpPitch,
+                roll = 0f,
+                ax = 0f,
+                ay = 9.81f,
+                az = 0f,
+                stepCount = 0,
+                currentTimeMs = t,
+            )
             analyzer.processSample(slumpPitch, 0f, activity, t)
         }
 

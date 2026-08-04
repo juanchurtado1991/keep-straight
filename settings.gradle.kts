@@ -24,3 +24,4 @@ rootProject.name = "KeepStraight"
 include(":shared")
 include(":androidApp")
 include(":wearApp")
+include(":desktopApp")

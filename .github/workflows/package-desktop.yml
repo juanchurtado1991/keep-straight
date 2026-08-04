@@ -1,7 +1,9 @@
 name: Package desktop
 
-# Builds Win/macOS/Linux installers on every PR and replaces the ci-latest release assets.
+# Builds Win/macOS/Linux installers on every push/PR and replaces the ci-latest release assets.
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -48,13 +50,36 @@ jobs:
 
       - name: Install WiX (Windows jpackage)
         if: matrix.target == 'windows'
-        run: choco install wixtoolset --version=3.14.1 -y
+        shell: bash
+        run: |
+          # Runners often already have a WiX 3.14.x build; don't pin an older Chocolatey revision.
+          if command -v candle >/dev/null 2>&1; then
+            echo "WiX already on PATH: $(candle -? 2>&1 | head -1 || true)"
+          elif [[ -d "/c/Program Files (x86)/WiX Toolset v3.14/bin" ]]; then
+            echo "WiX found under Program Files"
+            echo "/c/Program Files (x86)/WiX Toolset v3.14/bin" >> "$GITHUB_PATH"
+          else
+            choco install wixtoolset -y --no-progress
+          fi
+          if [[ -d "/c/Program Files (x86)/WiX Toolset v3.14/bin" ]]; then
+            echo "/c/Program Files (x86)/WiX Toolset v3.14/bin" >> "$GITHUB_PATH"
+          fi
 
       - name: Download MoveNet model
         shell: bash
         run: |
-          chmod +x desktopApp/scripts/download-movenet.sh
-          ./desktopApp/scripts/download-movenet.sh
+          set -euo pipefail
+          OUT_DIR="desktopApp/src/main/resources/models"
+          OUT_FILE="$OUT_DIR/movenet_lightning.onnx"
+          mkdir -p "$OUT_DIR"
+          URL="${MOVENET_ONNX_URL:-https://huggingface.co/Xenova/movenet-singlepose-lightning/resolve/main/onnx/model.onnx}"
+          if [[ -x desktopApp/scripts/download-movenet.sh ]]; then
+            ./desktopApp/scripts/download-movenet.sh
+          else
+            echo "Downloading MoveNet Lightning ONNX to $OUT_FILE"
+            curl -L --fail -o "$OUT_FILE" "$URL"
+          fi
+          ls -lh "$OUT_FILE"
 
       - name: Package desktop
         shell: bash
@@ -90,10 +115,12 @@ jobs:
     name: Publish ci-latest release
     needs: package
     runs-on: ubuntu-latest
-    # Same-repo PRs / manual runs can overwrite the shared release. Fork PRs only get job artifacts.
+    # Same-repo pushes/PRs / manual runs overwrite the shared release. Fork PRs only get job artifacts.
     if: >
       github.event_name == 'workflow_dispatch' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - name: Download all platform artifacts
         uses: actions/download-artifact@v4
@@ -119,15 +146,14 @@ jobs:
           set -euo pipefail
           NOTES="Automated desktop builds from CI (run ${{ github.run_number }}).
           Source: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          PR: ${{ github.event.pull_request.html_url || 'manual / workflow_dispatch' }}
+          Ref: ${{ github.ref }}
 
-          These assets are overwritten on every PR build from this repository."
+          These assets are overwritten on every push/PR build from this repository."
 
           if gh release view ci-latest >/dev/null 2>&1; then
             gh release edit ci-latest \
               --title "KeepStraight desktop (CI latest)" \
               --notes "$NOTES"
-            # Drop previous files so names don't accumulate.
             mapfile -t OLD < <(gh release view ci-latest --json assets -q '.assets[].name')
             for name in "${OLD[@]:-}"; do
               [[ -n "$name" ]] || continue

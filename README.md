@@ -45,6 +45,13 @@ KeepStraight monitors **sitting posture only**. It pauses while you stand, leave
 
 Fully quit and reopen after changing permissions. KeepStraight uses native drivers (AVFoundation / Media Foundation+DirectShow / V4L2), not the old BridJ stack.
 
+### CI desktop installers
+
+Every **push to `main`**, pull request, or manual Actions run builds fresh **Windows (EXE/MSI)**, **macOS (DMG)**, and **Linux (DEB)** packages.
+
+- **Actions → Artifacts** — `KeepStraight-windows` / `macos` / `linux` for that run  
+- **Release [`ci-latest`](../../releases/tag/ci-latest)** — always overwritten with the newest same-repo build (easy fixed download links)
+
 ### 2. Phone + watch
 
 Install KeepStraight on phone and watch (`applicationId` must be `com.keepstraight` on both). Pair the watch over Bluetooth (Galaxy Wearable).

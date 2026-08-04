@@ -17,6 +17,13 @@ class PhoneWatchSettingsUseCase(
         deviceSyncGateway.sendPreferences(level, alertPrefs)
     }
 
+    suspend fun setSlumpTiming(slumpDurationThresholdMs: Long, repeatAlertIntervalMs: Long) {
+        preferencesRepository.setSlumpTiming(slumpDurationThresholdMs, repeatAlertIntervalMs)
+        val sensitivity = preferencesRepository.sensitivity.first()
+        val alertPrefs = preferencesRepository.alertPreferences.first()
+        deviceSyncGateway.sendPreferences(sensitivity, alertPrefs)
+    }
+
     suspend fun setMonitoringEnabled(enabled: Boolean) {
         preferencesRepository.setMonitoringEnabled(enabled)
         val command = if (enabled) {

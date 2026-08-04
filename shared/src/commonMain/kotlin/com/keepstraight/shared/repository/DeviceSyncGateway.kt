@@ -23,6 +23,8 @@ interface DeviceSyncGateway {
     ): Result<Unit>
     suspend fun requestSync(): Result<Unit>
     suspend fun requestCalibrationCapture(): Result<Unit>
+    /** Waits for the in-flight capture started by [requestCalibrationCapture]. */
+    suspend fun awaitCalibrationResult(timeoutMs: Long): CalibrationCaptureResult?
     suspend fun reconnect(): Result<Unit>
     suspend fun syncAllPreferences(): Result<Unit>
 }

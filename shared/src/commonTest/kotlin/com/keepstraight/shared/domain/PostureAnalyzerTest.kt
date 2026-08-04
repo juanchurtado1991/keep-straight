@@ -69,6 +69,28 @@ class PostureAnalyzerTest {
     }
 
     @Test
+    fun dualPoseTriggersOnDirectedScore() {
+        val config = PostureCalibrationConfig(
+            basePitch = 0f,
+            baseRoll = 0f,
+            sensitivity = SensitivityLevel.NORMAL,
+            slumpDurationThresholdMs = 10_000L,
+            repeatAlertIntervalMs = 5_000L,
+            hasSlumpReference = true,
+            slumpPitch = 20f,
+            slumpRoll = 0f,
+        )
+        val analyzer = PostureAnalyzer(config)
+        var result = AnalyzerResult.NONE
+        var t = 0L
+        while (t <= 10_000L) {
+            result = analyzer.processSample(12f, 0f, ActivityState.SITTING, t)
+            t += 500L
+        }
+        assertEquals(AnalyzerResult.SLUMP_INITIAL_ALERT, result)
+    }
+
+    @Test
     fun correctedPostureResetsEpisode() {
         val analyzer = PostureAnalyzer(config)
         advanceBadPosture(analyzer, untilMs = 300_000L)

@@ -10,4 +10,11 @@ object SyncPaths {
     const val PREFERENCES = "/keepstraight/preferences"
     const val SYNC_REQUEST = "/keepstraight/sync-request"
     const val SYNC_ACK = "/keepstraight/sync-ack"
+    /** Wear → phone reachability check while the watch UI is open. */
+    const val PING = "/keepstraight/ping"
+}
+
+object SyncCapabilities {
+    const val PHONE = "keepstraight_phone"
+    const val WEAR = "keepstraight_wear"
 }
