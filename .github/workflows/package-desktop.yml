@@ -227,6 +227,7 @@ jobs:
       - name: Replace ci-latest release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
@@ -248,6 +249,7 @@ jobs:
             done
           else
             gh release create ci-latest \
+              --target "${{ github.sha }}" \
               --title "KeepStraight desktop (CI latest)" \
               --notes "$NOTES" \
               --prerelease
