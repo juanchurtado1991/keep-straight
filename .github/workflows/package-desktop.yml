@@ -1,0 +1,145 @@
+name: Package desktop
+
+# Builds Win/macOS/Linux installers on every PR and replaces the ci-latest release assets.
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: package-desktop-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  package:
+    name: Package (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+            tasks: ":desktopApp:packageExe :desktopApp:packageMsi"
+            patterns: "*.exe *.msi"
+          - os: macos-latest
+            target: macos
+            tasks: ":desktopApp:packageDmg"
+            patterns: "*.dmg"
+          - os: ubuntu-latest
+            target: linux
+            tasks: ":desktopApp:packageDeb"
+            patterns: "*.deb"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install WiX (Windows jpackage)
+        if: matrix.target == 'windows'
+        run: choco install wixtoolset --version=3.14.1 -y
+
+      - name: Download MoveNet model
+        shell: bash
+        run: |
+          chmod +x desktopApp/scripts/download-movenet.sh
+          ./desktopApp/scripts/download-movenet.sh
+
+      - name: Package desktop
+        shell: bash
+        env:
+          PACKAGE_VERSION: "1.0.${{ github.run_number }}"
+        run: |
+          ./gradlew ${{ matrix.tasks }} \
+            -Pkeepstraight.skipApkSync=true \
+            -Pkeepstraight.packageVersion="$PACKAGE_VERSION" \
+            --no-daemon \
+            --console=plain
+
+      - name: Collect installers
+        shell: bash
+        run: |
+          mkdir -p "dist/${{ matrix.target }}"
+          # shellcheck disable=SC2086
+          for pattern in ${{ matrix.patterns }}; do
+            find desktopApp/build/compose/binaries -type f -name "$pattern" -exec cp -v {} "dist/${{ matrix.target }}/" \;
+          done
+          ls -la "dist/${{ matrix.target }}"
+
+      - name: Upload ${{ matrix.target }} artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeepStraight-${{ matrix.target }}
+          path: dist/${{ matrix.target }}/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+  publish-ci-latest:
+    name: Publish ci-latest release
+    needs: package
+    runs-on: ubuntu-latest
+    # Same-repo PRs / manual runs can overwrite the shared release. Fork PRs only get job artifacts.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: KeepStraight-*
+          merge-multiple: false
+
+      - name: Flatten assets
+        shell: bash
+        run: |
+          mkdir -p out
+          find release-assets -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' -o -name '*.deb' \) \
+            -exec cp -v {} out/ \;
+          ls -lah out
+          test "$(find out -type f | wc -l)" -gt 0
+
+      - name: Replace ci-latest release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOTES="Automated desktop builds from CI (run ${{ github.run_number }}).
+          Source: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR: ${{ github.event.pull_request.html_url || 'manual / workflow_dispatch' }}
+
+          These assets are overwritten on every PR build from this repository."
+
+          if gh release view ci-latest >/dev/null 2>&1; then
+            gh release edit ci-latest \
+              --title "KeepStraight desktop (CI latest)" \
+              --notes "$NOTES"
+            # Drop previous files so names don't accumulate.
+            mapfile -t OLD < <(gh release view ci-latest --json assets -q '.assets[].name')
+            for name in "${OLD[@]:-}"; do
+              [[ -n "$name" ]] || continue
+              gh release delete-asset ci-latest "$name" --yes || true
+            done
+          else
+            gh release create ci-latest \
+              --title "KeepStraight desktop (CI latest)" \
+              --notes "$NOTES" \
+              --prerelease
+          fi
+
+          gh release upload ci-latest out/* --clobber
+          echo "Published:"
+          gh release view ci-latest
