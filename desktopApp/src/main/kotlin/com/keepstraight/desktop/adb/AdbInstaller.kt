@@ -348,15 +348,22 @@ class AdbInstaller(
             os.contains("win") -> "windows"
             else -> "linux"
         }
-        val exeName = if (os.contains("win")) "adb.exe" else "adb"
-        extractResourceBinary("adb/$folder/$exeName")?.let {
-            if (!os.contains("win")) it.setExecutable(true)
-            return it
+        val isWindows = os.contains("win")
+        val exeName = if (isWindows) "adb.exe" else "adb"
+        extractResourceBinary("adb/$folder/$exeName")?.let { adb ->
+            // Windows adb needs its WinUSB helper DLLs beside the exe.
+            if (isWindows) {
+                extractResourceBinary("adb/windows/AdbWinApi.dll")
+                extractResourceBinary("adb/windows/AdbWinUsbApi.dll")
+            } else {
+                adb.setExecutable(true)
+            }
+            return adb
         }
         resourceRoot?.let { root ->
             val f = File(root, "adb/$folder/$exeName")
             if (f.isFile) {
-                if (!os.contains("win")) f.setExecutable(true)
+                if (!isWindows) f.setExecutable(true)
                 return f
             }
         }

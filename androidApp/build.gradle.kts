@@ -17,6 +17,30 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+        // Sideload builds must be signed to install over adb, and phone + watch must share
+        // the same certificate or the Wear Data Layer silently drops messages.
+        create("sideload") {
+            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("sideload")
+        }
+    }
+
     buildFeatures {
         compose = true
     }
@@ -40,6 +64,11 @@ android {
 }
 
 dependencies {
+    constraints {
+        // Wearable/CameraX transitives drag in fragment 1.1.0, which trips the
+        // release-blocking InvalidFragmentVersionForActivityResult lint check.
+        implementation("androidx.fragment:fragment:1.8.6")
+    }
     implementation(project(":shared"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -61,6 +90,15 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
+    implementation("androidx.compose.material:material-icons-extended")
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.ghost.serialization)
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.cio)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.zxing.core)
+    implementation("androidx.camera:camera-camera2:1.4.1")
+    implementation("androidx.camera:camera-lifecycle:1.4.1")
+    implementation("androidx.camera:camera-view:1.4.1")
 }

@@ -4,60 +4,132 @@
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Welcome to Keep Straight</string>
-    <string name="onboarding_welcome_body">Your watch monitors posture and alerts you when you slump. Let\'s get set up.</string>
-    <string name="onboarding_pair_title">Pair your watch</string>
-    <string name="onboarding_pair_body">Make sure your Wear OS watch is connected via Bluetooth, then select it below.</string>
-    <string name="onboarding_pair_refresh">Refresh watches</string>
-    <string name="onboarding_pair_none">No watches found. Open Bluetooth settings and try again.</string>
+    <string name="onboarding_welcome_body">KeepStraight watches your posture with your computer\'s webcam. This phone shows your desk time and can pass alerts to a watch.</string>
+    <string name="onboarding_pair_title">Pair your watch (optional)</string>
+    <string name="onboarding_pair_body">KeepStraight works with one watch. Connect it via Bluetooth, then select it below — or skip and add it later in Settings.</string>
+    <string name="onboarding_pair_refresh">Refresh</string>
+    <string name="onboarding_pair_bluetooth">Open Bluetooth settings</string>
+    <string name="onboarding_pair_wear_companion">Open Wear companion</string>
+    <string name="onboarding_pair_searching">Searching for watches…</string>
+    <string name="onboarding_pair_timeout">Timed out looking for watches. Check Bluetooth, open Wear companion, then tap Refresh.</string>
+    <string name="onboarding_pair_failed">Could not reach Wear OS. Check Google Play services and Bluetooth, then tap Refresh.</string>
+    <string name="onboarding_pair_none">No watches found. Open Bluetooth settings or Wear companion, then tap Refresh.</string>
+    <string name="onboarding_pair_multi">More than one watch is connected. KeepStraight uses one watch — pick the one you wear.</string>
+    <string name="onboarding_pair_skip">Skip — no watch for now</string>
+    <string name="onboarding_pair_optional">The watch is optional. Posture is detected by the desktop app; the watch only adds vibration alerts.</string>
+    <string name="onboarding_pair_done">Done</string>
     <string name="onboarding_notifications_title">Enable notifications</string>
     <string name="onboarding_notifications_body">Allow notifications so Keep Straight can alert you on your phone when you slump.</string>
     <string name="onboarding_notifications_open">Open notification settings</string>
     <string name="onboarding_battery_title">Battery optimization</string>
-    <string name="onboarding_battery_body">Disable battery optimization so the watch connection stays reliable in the background.</string>
-    <string name="onboarding_battery_open">Open battery settings</string>
-    <string name="onboarding_battery_ack">I\'ve disabled battery optimization</string>
-    <string name="onboarding_calibrate_title">Calibrate posture</string>
-    <string name="onboarding_calibrate_body">Sit up straight and calibrate your baseline posture. You can do this now or later from the dashboard.</string>
+    <string name="onboarding_battery_body">Allow unrestricted battery so background sync with your watch stays reliable.</string>
+    <string name="onboarding_battery_open">Allow unrestricted battery</string>
+    <string name="onboarding_battery_fallback">Open battery settings</string>
+    <string name="onboarding_battery_ack">I\'ve allowed unrestricted battery</string>
+    <string name="onboarding_watch_permissions_title">Watch permissions</string>
+    <string name="onboarding_watch_permissions_body">Open Keep Straight on your watch and allow Body sensors, Physical activity, and the ongoing monitoring notification when prompted. These are required for posture detection.</string>
+    <string name="onboarding_calibrate_title">Calibrate on your computer</string>
+    <string name="onboarding_calibrate_body">Posture is measured by the KeepStraight desktop app and your webcam — not the watch. On your PC: Calibrate erect, then slumped, then Start. Pair this phone under Settings → Desktop companion so alerts reach your watch.</string>
+    <string name="onboarding_calibrate_required">Open the desktop app to calibrate when you are at your computer.</string>
+    <string name="onboarding_calibrate_done">You can calibrate later on your computer.</string>
+    <string name="onboarding_calibrate_again">Recalibrate</string>
     <string name="onboarding_calibrate_skip">Skip for now</string>
     <string name="onboarding_sensitivity_title">Choose sensitivity</string>
-    <string name="onboarding_sensitivity_body">How quickly should Keep Straight detect slumping?</string>
+    <string name="onboarding_sensitivity_body">How strictly should Keep Straight treat slumping? You can change this later.</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_finish">Get started</string>
     <string name="onboarding_back">Back</string>
 
     <!-- Dashboard -->
     <string name="dashboard_title">Dashboard</string>
-    <string name="dashboard_recalibrate">Recalibrate</string>
-    <string name="dashboard_monitoring">Monitoring</string>
+    <string name="dashboard_recalibrate">Calibrate on computer</string>
+    <string name="dashboard_monitoring">Watch ready</string>
     <string name="dashboard_alerts">Alerts</string>
     <string name="dashboard_history">History</string>
     <string name="dashboard_alert_settings">Alert settings</string>
     <string name="dashboard_sensitivity">Sensitivity</string>
     <string name="dashboard_settings">Settings</string>
     <string name="dashboard_connected">Watch connected</string>
-    <string name="dashboard_connected_subtitle">Your watch is monitoring posture in the background.</string>
-    <string name="dashboard_recalibrate_subtitle">Use after changing chair, desk, or sitting position.</string>
-    <string name="dashboard_monitoring_subtitle">Turn posture detection on or off on your watch.</string>
+    <string name="dashboard_connected_subtitle">Watch ready for alerts. Posture is detected on your computer.</string>
+    <string name="dashboard_recalibrate_subtitle">Open KeepStraight on your PC and calibrate erect, then slumped.</string>
+    <string name="dashboard_monitoring_subtitle">Keeps the watch ready for desktop alert haptics. Posture is detected on your computer.</string>
     <string name="dashboard_alerts_subtitle">Pause or resume vibration and visual alerts.</string>
-    <string name="dashboard_requires_watch">Connect your watch to change this.</string>
+    <string name="dashboard_requires_watch">Pair a watch to change this.</string>
+    <string name="dashboard_applies_when_connected">Saved now — applied when the watch reconnects.</string>
+    <string name="dashboard_watch_optional">Add a watch (optional)</string>
+    <string name="dashboard_watch_optional_subtitle">Pair a Wear OS watch for vibration alerts. Not required — the desktop app works alone.</string>
     <string name="dashboard_disconnected">Watch disconnected</string>
     <string name="dashboard_reconnect">Reconnect</string>
+    <string name="dashboard_reconnecting">Reconnecting…</string>
+    <string name="dashboard_desktop_card_title">Connect computer</string>
+    <string name="dashboard_desktop_card_body">Scan the desktop QR to pair — same Wi‑Fi.</string>
+    <string name="dashboard_desktop_card_paired">Paired with desktop. Tap to scan again if needed.</string>
+    <string name="dashboard_charts_title">Desk time</string>
+    <string name="dashboard_charts_subtitle">Hours seated at your computer and time with good posture — today updates as you work.</string>
+    <string name="dashboard_charts_empty">No desk-time data yet. Pair desktop and start a session.</string>
+    <string name="dashboard_day_today_in_progress">Today · in progress</string>
+    <string name="dashboard_day_empty_today">No seated time yet today. It will appear while you work at your desk.</string>
+    <string name="dashboard_day_empty_past">No desk time recorded this day.</string>
+    <string name="dashboard_day_summary">Seated %1$s · good posture %2$s (%3$d%%)</string>
+    <string name="dashboard_day_summary_so_far">So far: seated %1$s · good posture %2$s (%3$d%%)</string>
+    <string name="dashboard_legend_seated">Seated</string>
+    <string name="dashboard_legend_good">Good posture</string>
 
     <!-- Banners -->
-    <string name="banner_battery_title">Battery optimization enabled</string>
-    <string name="banner_battery_body">Background sync may be unreliable. Tap to fix.</string>
+    <string name="banner_battery_title">Battery restrictions on</string>
+    <string name="banner_battery_body">Background restrictions may delay posture history sync</string>
     <string name="banner_battery_dismiss">Dismiss</string>
+    <string name="banner_battery_fix">Fix</string>
     <string name="banner_connection_title">Watch not connected</string>
-    <string name="banner_connection_body">Reconnect your watch to resume posture monitoring.</string>
+    <string name="banner_connection_body">Open connection status to reconnect and sync.</string>
+    <string name="reconnect_error_no_watch">No watch paired. Pair a watch in Settings first.</string>
+    <string name="reconnect_error_unreachable">Watch not reachable. Open Keep Straight on the watch and check Bluetooth.</string>
+    <string name="reconnect_error_send_failed">Could not talk to the watch. Make sure Keep Straight is installed and open once on the watch.</string>
+    <string name="reconnect_error_timeout">Reconnect timed out. Try again with the watch nearby and unlocked.</string>
+
+    <!-- Connection flow -->
+    <string name="connection_flow_title">Watch connection</string>
+    <string name="connection_flow_disconnected_title">Watch disconnected</string>
+    <string name="connection_flow_disconnected_body">Keep the watch nearby, unlock it, and open Keep Straight once on the watch. Then reconnect.</string>
+    <string name="connection_flow_no_pair_body">No watch is paired yet. Choose your Wear OS watch to continue.</string>
+    <string name="connection_flow_progress_title">Reconnecting</string>
+    <string name="connection_flow_progress_body">Checking reachability and syncing settings with your watch…</string>
+    <string name="connection_flow_success_title">Connected</string>
+    <string name="connection_flow_success_body">Watch is online and settings were synced. Monitoring can resume on the watch.</string>
+    <string name="connection_flow_failed_title">Couldn’t reconnect</string>
+    <string name="connection_flow_connected_title">Watch connected</string>
+    <string name="connection_flow_connected_body">Your watch is reachable. Posture monitoring can run in the background.</string>
+    <string name="connection_flow_done">Done</string>
+    <string name="connection_flow_open_bluetooth">Open Bluetooth settings</string>
+    <string name="connection_flow_open_watch_hint_action">Back to dashboard</string>
 
     <!-- Calibrate -->
     <string name="calibrate_title">Calibrate posture</string>
-    <string name="calibrate_instructions">Sit up straight with your watch on your wrist. Hold still while we capture your baseline.</string>
+    <string name="calibrate_ready_title">Ready to calibrate</string>
+    <string name="calibrate_offline_title">Watch offline</string>
+    <string name="calibrate_instructions">Posture is calibrated on your computer webcam (KeepStraight desktop). Wrist calibration on the watch is legacy and no longer used for slump detection.</string>
     <string name="calibrate_countdown">Hold still… %1$d</string>
+    <string name="calibrate_countdown_body">Hold still in your good sitting posture</string>
+    <string name="calibrate_countdown_slouch_body">Hold still in your slumped posture</string>
     <string name="calibrate_capturing">Capturing posture…</string>
+    <string name="calibrate_capturing_hint">Waiting for your watch to capture upright posture…</string>
+    <string name="calibrate_capturing_slouch_hint">Waiting for your watch to capture slumped posture…</string>
+    <string name="calibrate_slouch_title">Now slouch</string>
+    <string name="calibrate_slouch_body">Round your shoulders and sit like you do when you forget posture. Keep the watch on the same wrist, then capture.</string>
+    <string name="calibrate_slouch_capture">Capture slouch pose</string>
     <string name="calibrate_start">Start calibration</string>
+    <string name="calibrate_retry">Try again</string>
     <string name="calibrate_success">Calibration saved</string>
+    <string name="calibrate_success_title">Calibration saved</string>
+    <string name="calibrate_success_body">Good and slouch poses are set. Lower the alert delay in Sensitivity to test quickly.</string>
+    <string name="calibrate_failed_title">Calibration failed</string>
     <string name="calibrate_error">Calibration failed. Check your watch connection.</string>
+    <string name="calibrate_error_not_connected">Connect your watch to recalibrate.</string>
+    <string name="calibrate_error_send_failed">Could not reach the watch. Open Keep Straight on the watch, then try again.</string>
+    <string name="calibrate_error_send_timeout">Sending the calibrate request timed out. Check Bluetooth and try again.</string>
+    <string name="calibrate_error_no_response">Watch did not return a calibration result. Keep the watch on your wrist, leave Keep Straight open on the watch (status should show Calibrating), then try again.</string>
+    <string name="calibrate_error_save_failed">Could not save calibration on the phone. Try again.</string>
+    <string name="calibrate_error_slouch_similar">Your slouch pose looked too similar to upright. Slouch more clearly (round shoulders / lean forward) and try again.</string>
     <string name="calibrate_not_connected">Connect your watch before calibrating.</string>
 
     <!-- History -->
@@ -84,22 +156,49 @@
     <string name="sensitivity_strict">Strict — alerts quickly</string>
     <string name="sensitivity_normal">Normal — balanced</string>
     <string name="sensitivity_relaxed">Relaxed — fewer alerts</string>
+    <string name="sensitivity_slump_delay_title">Time before first alert</string>
+    <string name="sensitivity_slump_delay_value">%1$s of sustained slump</string>
+    <string name="sensitivity_slump_delay_hint">Use 5–15 seconds to test. Default is 30 seconds.</string>
+    <string name="sensitivity_repeat_title">Repeat alert every</string>
+    <string name="sensitivity_repeat_value">Every %1$d seconds until you sit up</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_paired_watch">Paired watch</string>
-    <string name="settings_no_watch">None paired</string>
+    <string name="settings_no_watch">No watch paired</string>
     <string name="settings_notifications">Notification settings</string>
-    <string name="settings_battery">Battery optimization</string>
+    <string name="settings_battery">Battery / background</string>
     <string name="settings_bluetooth">Bluetooth settings</string>
     <string name="settings_app_details">App info</string>
+    <string name="settings_recalibrate">Calibrate on computer</string>
+    <string name="settings_sensitivity">Sensitivity</string>
+    <string name="settings_change_watch">Change paired watch</string>
     <string name="settings_unpair">Unpair watch</string>
+    <string name="settings_desktop_bridge">Desktop companion</string>
+    <string name="settings_desktop_bridge_body">On your computer, tap Show QR to pair. Then scan that QR here — same Wi‑Fi.</string>
+    <string name="settings_desktop_bridge_paired">Paired with desktop</string>
+    <string name="settings_desktop_bridge_not_paired">Not paired</string>
+    <string name="settings_desktop_bridge_scan_qr">Scan desktop QR</string>
+    <string name="settings_desktop_bridge_clear">Clear desktop pairing</string>
+    <string name="desktop_qr_title">Scan desktop QR</string>
+    <string name="desktop_qr_hint">Point at the KeepStraight QR on your computer</string>
+    <string name="desktop_qr_pairing">Pairing with desktop…</string>
+    <string name="desktop_qr_success">Paired with desktop</string>
+    <string name="desktop_qr_failed">Couldn’t pair. Try again.</string>
+    <string name="desktop_qr_camera_denied">Camera permission is required to scan the QR.</string>
+    <string name="desktop_qr_camera_grant">Allow camera</string>
+    <string name="desktop_qr_camera_settings">Open app settings</string>
 
     <!-- Notifications -->
     <string name="notification_channel_posture">Posture alerts</string>
     <string name="notification_channel_posture_desc">Alerts when slumping is detected</string>
     <string name="notification_slump_title">Posture alert</string>
     <string name="notification_slump_body">You\'ve been slumping for %1$s</string>
+    <string name="notification_channel_desktop_bridge">Desktop companion</string>
+    <string name="notification_channel_desktop_bridge_desc">Keeps the phone reachable by KeepStraight on your computer</string>
+    <string name="notification_desktop_bridge_title">KeepStraight desktop link</string>
+    <string name="notification_desktop_bridge_paired">Listening for desktop posture alerts</string>
+    <string name="notification_desktop_bridge_ready">Ready to pair with desktop</string>
 
     <!-- Common -->
     <string name="action_back">Back</string>

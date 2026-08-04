@@ -47,7 +47,7 @@ Fully quit and reopen after changing permissions. KeepStraight uses native drive
 
 ### CI desktop installers
 
-Every **push to `main`**, pull request, or manual Actions run builds fresh **Windows (EXE/MSI)**, **macOS (DMG)**, and **Linux (DEB)** packages.
+Every **push to `main`**, pull request, or manual Actions run builds fresh **Windows (EXE/MSI)**, **macOS (DMG)**, and **Linux (DEB)** packages. Each installer bundles **MoveNet**, **adb** for that OS, and the **phone + watch APKs** so the desktop wizard can wirelessly sideload companions.
 
 - **Actions → Artifacts** — `KeepStraight-windows` / `macos` / `linux` for that run  
 - **Release [`ci-latest`](../../releases/tag/ci-latest)** — always overwritten with the newest same-repo build (easy fixed download links)
@@ -77,8 +77,6 @@ On the desktop tap **Show QR to pair**. On the phone (same Wi‑Fi), scan that Q
 - Pose runs **100% offline** on your PC. Frames are not saved.
 - History lives on your phone. No cloud account.
 - A privacy LED may stay on while the camera is open.
-
-See [PRODUCT.md](PRODUCT.md) for the full product rules.
 
 ---
 

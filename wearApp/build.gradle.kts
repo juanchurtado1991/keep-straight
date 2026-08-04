@@ -9,11 +9,36 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.keepstraight.wear"
+        // Must match phone applicationId — Wear Data Layer only delivers between
+        // apps with the same package name + signing certificate.
+        applicationId = "com.keepstraight"
         minSdk = 30
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            // Same debug key as phone module (machine default).
+            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+        create("sideload") {
+            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("sideload")
+        }
     }
 
     buildFeatures {
@@ -39,6 +64,11 @@ android {
 }
 
 dependencies {
+    constraints {
+        // Wear transitives drag in fragment 1.1.0, which trips the release-blocking
+        // InvalidFragmentVersionForActivityResult lint check.
+        implementation("androidx.fragment:fragment:1.8.6")
+    }
     implementation(project(":shared"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

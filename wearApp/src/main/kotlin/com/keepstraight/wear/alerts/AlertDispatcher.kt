@@ -15,11 +15,45 @@ class AlertDispatcher(private val context: Context) {
 
     private var activeRingtone: android.media.Ringtone? = null
 
+    /**
+     * Urgent multi-burst waveform — long, max-amplitude pulses so a desk slump
+     * is hard to ignore on the wrist.
+     * timings: delay, on, off, on, off, on, off, on, off, on
+     */
+    private val insistentAlertEffect: VibrationEffect = VibrationEffect.createWaveform(
+        longArrayOf(
+            0,
+            BURST_MS, GAP_MS,
+            BURST_MS, GAP_MS,
+            BURST_MS, LONG_GAP_MS,
+            BURST_MS, GAP_MS,
+            BURST_MS, GAP_MS,
+            BURST_MS,
+        ),
+        intArrayOf(
+            0,
+            HAPTIC_AMPLITUDE, 0,
+            HAPTIC_AMPLITUDE, 0,
+            HAPTIC_AMPLITUDE, 0,
+            HAPTIC_AMPLITUDE, 0,
+            HAPTIC_AMPLITUDE, 0,
+            HAPTIC_AMPLITUDE,
+        ),
+        -1,
+    )
+
+    private val vibrator: Vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        context.getSystemService(VibratorManager::class.java).defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Vibrator::class.java)
+    }
+
     fun dispatchAlert(preferences: AlertPreferences) {
         if (isDndActive()) return
 
         if (preferences.hapticEnabled) {
-            playDoublePulseHaptic()
+            playInsistentHaptic()
         }
         if (preferences.visualEnabled) {
             broadcastFlashOverlay()
@@ -34,18 +68,9 @@ class AlertDispatcher(private val context: Context) {
         return notificationManager.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
     }
 
-    private fun playDoublePulseHaptic() {
-        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = context.getSystemService(VibratorManager::class.java)
-            vibratorManager.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            context.getSystemService(Vibrator::class.java)
-        }
-
-        val timings = longArrayOf(0, PULSE_MS, GAP_MS, PULSE_MS)
-        val amplitudes = intArrayOf(0, 255, 0, 255)
-        vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+    private fun playInsistentHaptic() {
+        vibrator.cancel()
+        vibrator.vibrate(insistentAlertEffect)
     }
 
     private fun broadcastFlashOverlay() {
@@ -57,11 +82,12 @@ class AlertDispatcher(private val context: Context) {
         activeRingtone?.stop()
         activeRingtone = null
 
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         val ringtone = RingtoneManager.getRingtone(context, uri) ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ringtone.audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setUsage(AudioAttributes.USAGE_ALARM)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
         }
@@ -71,7 +97,10 @@ class AlertDispatcher(private val context: Context) {
 
     companion object {
         const val ACTION_ALERT_FLASH = "com.keepstraight.wear.ALERT_FLASH"
-        private const val PULSE_MS = 120L
-        private const val GAP_MS = 80L
+        private const val BURST_MS = 280L
+        private const val GAP_MS = 90L
+        private const val LONG_GAP_MS = 220L
+        /** Max amplitude (0–255). */
+        private const val HAPTIC_AMPLITUDE = 255
     }
 }

@@ -24,7 +24,6 @@ import com.keepstraight.wear.sync.ConnectionRetryManager
 import com.keepstraight.wear.sync.PendingSyncQueue
 import com.keepstraight.wear.sync.WearMessageSender
 import com.ghost.serialization.Ghost
-import com.keepstraight.wear.sync.WearSyncListenerService
 import com.keepstraight.shared.model.PostureEvent
 import com.keepstraight.shared.sync.SyncPaths
 import kotlinx.coroutines.CoroutineScope
@@ -51,6 +50,8 @@ class PostureMonitoringService : Service(), SensorEventListener {
     private var latestAy = 0f
     private var latestAz = 0f
     private var latestStepCount = 0
+    private var sensorsRegistered = false
+    private var wasOffWrist = false
 
     private val sampleRunnable = object : Runnable {
         override fun run() {
@@ -88,9 +89,6 @@ class PostureMonitoringService : Service(), SensorEventListener {
         session.onPostureEvent = { event ->
             scope.launch { sendPostureEvent(event) }
         }
-        session.onCalibrationComplete = { result ->
-            WearSyncListenerService.sendCalibrationResult(this, result)
-        }
         session.onSyncRequested = {
             scope.launch { trySendPendingEvents() }
         }
@@ -102,6 +100,12 @@ class PostureMonitoringService : Service(), SensorEventListener {
         }
         session.onStateChanged = {
             handler.post { updateNotification() }
+        }
+        session.onEnsureSensors = {
+            handler.post {
+                wasOffWrist = false
+                registerMotionSensors()
+            }
         }
     }
 
@@ -135,7 +139,12 @@ class PostureMonitoringService : Service(), SensorEventListener {
                 latestAx = event.values[0]
                 latestAy = event.values[1]
                 latestAz = event.values[2]
-                offBodyDetector.onAccelerometerSample(latestAx, latestAy, latestAz)
+                offBodyDetector.onAccelerometerSample(
+                    ax = latestAx,
+                    ay = latestAy,
+                    az = latestAz,
+                    stepCount = latestStepCount,
+                )
             }
             Sensor.TYPE_STEP_COUNTER -> {
                 latestStepCount = event.values[0].toInt()
@@ -148,26 +157,53 @@ class PostureMonitoringService : Service(), SensorEventListener {
     private fun processCurrentSample() {
         val app = application as KeepStraightWearApp
         val offWrist = offBodyDetector.isOffWrist()
+
+        val calibrating = app.monitoringSession.isCalibrating.value
+
+        // Keep sensors alive while calibrating so capture always gets IMU samples.
+        if (!calibrating && offWrist && !wasOffWrist && offBodyDetector.hasOffBodySensor) {
+            unregisterMotionSensors()
+        } else if (calibrating || (!offWrist && wasOffWrist)) {
+            registerMotionSensors()
+        }
+        if (!calibrating) {
+            wasOffWrist = offWrist
+        }
+
         app.monitoringSession.processSample(
             ax = latestAx,
             ay = latestAy,
             az = latestAz,
+            // Treat as on-wrist during calibration so capture is not blocked by off-body glitches.
             stepCount = latestStepCount,
-            offWrist = offWrist,
+            offWrist = if (calibrating) false else offWrist,
         )
     }
 
     private fun registerSensors() {
+        registerMotionSensors()
+    }
+
+    private fun registerMotionSensors() {
+        if (sensorsRegistered) return
         accelerometer?.let { sensor ->
             sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
         }
         stepCounter?.let { sensor ->
             sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
         }
+        sensorsRegistered = true
+    }
+
+    private fun unregisterMotionSensors() {
+        if (!sensorsRegistered) return
+        accelerometer?.let { sensorManager.unregisterListener(this, it) }
+        stepCounter?.let { sensorManager.unregisterListener(this, it) }
+        sensorsRegistered = false
     }
 
     private fun unregisterSensors() {
-        sensorManager.unregisterListener(this)
+        unregisterMotionSensors()
     }
 
     private suspend fun trySendPendingEvents() {

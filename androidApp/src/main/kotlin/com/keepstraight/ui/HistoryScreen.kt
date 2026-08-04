@@ -1,20 +1,31 @@
 package com.keepstraight.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.PauseCircle
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
@@ -23,6 +34,8 @@ import com.keepstraight.R
 import com.keepstraight.data.local.PostureEventEntity
 import com.keepstraight.shared.model.PostureEventType
 import com.keepstraight.ui.components.KeepStraightTopBar
+import com.keepstraight.ui.theme.PhoneCard
+import com.keepstraight.ui.theme.PhoneDimens
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -36,6 +49,7 @@ fun HistoryScreen(
     onBack: () -> Unit,
 ) {
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             KeepStraightTopBar(
                 title = stringResource(R.string.history_title),
@@ -51,36 +65,41 @@ fun HistoryScreen(
                         .padding(padding),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
 
             events.loadState.refresh is LoadState.Error -> {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
-                        .padding(24.dp),
+                        .padding(PhoneDimens.pagePadding),
                 ) {
-                    Text(
-                        text = stringResource(R.string.history_error),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                    PhoneCard {
+                        Text(
+                            text = stringResource(R.string.history_error),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
 
             events.itemCount == 0 -> {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
-                        .padding(24.dp),
+                        .padding(PhoneDimens.pagePadding),
                 ) {
-                    Text(
-                        text = stringResource(R.string.history_empty),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
+                    PhoneCard {
+                        Text(
+                            text = stringResource(R.string.history_empty),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
@@ -89,6 +108,8 @@ fun HistoryScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
+                    contentPadding = PaddingValues(PhoneDimens.pagePadding),
+                    verticalArrangement = Arrangement.spacedBy(PhoneDimens.sectionGap),
                 ) {
                     items(
                         count = events.itemCount,
@@ -98,11 +119,21 @@ fun HistoryScreen(
                         val previous = if (index > 0) events[index - 1] else null
                         val currentDay = startOfDayMillis(event.timestamp)
                         val previousDay = previous?.let { startOfDayMillis(it.timestamp) }
+                        val showHeader = currentDay != previousDay
 
-                        if (currentDay != previousDay) {
-                            DayHeader(dayLabel(currentDay, event.timestamp))
+                        Column(verticalArrangement = Arrangement.spacedBy(PhoneDimens.itemGap)) {
+                            if (showHeader) {
+                                Text(
+                                    text = dayLabel(currentDay, event.timestamp),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                            PhoneCard {
+                                EventRowContent(event)
+                            }
                         }
-                        EventRow(event)
                     }
                 }
             }
@@ -111,20 +142,7 @@ fun HistoryScreen(
 }
 
 @Composable
-private fun DayHeader(label: String) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        color = MaterialTheme.colorScheme.primary,
-    )
-    HorizontalDivider()
-}
-
-@Composable
-private fun EventRow(event: PostureEventEntity) {
+private fun EventRowContent(event: PostureEventEntity) {
     val timeFormat = SimpleDateFormat("HH:mm", EnglishLocale)
     val type = runCatching { PostureEventType.valueOf(event.eventType) }.getOrNull()
     val eventLabel = when (type) {
@@ -134,28 +152,52 @@ private fun EventRow(event: PostureEventEntity) {
         PostureEventType.MONITORING_RESUMED -> stringResource(R.string.event_resumed)
         null -> event.eventType
     }
+    val icon = eventIcon(type)
+    val iconTint = when (type) {
+        PostureEventType.SLUMP_DETECTED -> MaterialTheme.colorScheme.error
+        PostureEventType.CALIBRATED -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val durationText = formatDuration(event.durationSeconds)
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(PhoneDimens.rowGap),
     ) {
-        Text(text = eventLabel, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            text = timeFormat.format(Date(event.timestamp)),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Icon(
+            imageVector = icon,
+            contentDescription = eventLabel,
+            tint = iconTint,
+            modifier = Modifier.size(28.dp),
         )
-        if (type == PostureEventType.SLUMP_DETECTED && event.durationSeconds > 0) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(PhoneDimens.itemGap / 2),
+        ) {
+            Text(text = eventLabel, style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = stringResource(R.string.event_duration, durationText),
+                text = timeFormat.format(Date(event.timestamp)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (type == PostureEventType.SLUMP_DETECTED && event.durationSeconds > 0) {
+                Text(
+                    text = stringResource(R.string.event_duration, durationText),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
-    HorizontalDivider()
+}
+
+private fun eventIcon(type: PostureEventType?): ImageVector = when (type) {
+    PostureEventType.SLUMP_DETECTED -> Icons.Outlined.WarningAmber
+    PostureEventType.CALIBRATED -> Icons.Outlined.CheckCircle
+    PostureEventType.MONITORING_PAUSED -> Icons.Outlined.PauseCircle
+    PostureEventType.MONITORING_RESUMED -> Icons.Outlined.PlayCircle
+    null -> Icons.Outlined.CheckCircle
 }
 
 @Composable

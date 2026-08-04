@@ -20,6 +20,7 @@ class UserPreferencesRepository(
 ) : com.keepstraight.shared.repository.PreferencesRepository {
     private object Keys {
         val PAIRED_WATCH_ID = stringPreferencesKey("paired_watch_id")
+        val PAIRED_AT = longPreferencesKey("paired_at")
         val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val SENSITIVITY = stringPreferencesKey("sensitivity")
         val MONITORING_ENABLED = booleanPreferencesKey("monitoring_enabled")
@@ -31,9 +32,16 @@ class UserPreferencesRepository(
         val BATTERY_OPT_DISMISSED = booleanPreferencesKey("battery_opt_dismissed")
         val CALIBRATION_PITCH = longPreferencesKey("calibration_pitch_bits")
         val CALIBRATION_ROLL = longPreferencesKey("calibration_roll_bits")
+        val HAS_SLUMP_REF = booleanPreferencesKey("has_slump_reference")
+        val SLUMP_PITCH = longPreferencesKey("slump_pitch_bits")
+        val SLUMP_ROLL = longPreferencesKey("slump_roll_bits")
+        val SLUMP_DURATION_MS = longPreferencesKey("slump_duration_threshold_ms")
+        val REPEAT_ALERT_MS = longPreferencesKey("repeat_alert_interval_ms")
     }
 
     override val pairedWatchId: Flow<String?> = context.dataStore.data.map { it[Keys.PAIRED_WATCH_ID] }
+
+    override val pairedAt: Flow<Long?> = context.dataStore.data.map { it[Keys.PAIRED_AT] }
 
     override val onboardingComplete: Flow<Boolean> = context.dataStore.data.map {
         it[Keys.ONBOARDING_COMPLETE] ?: false
@@ -57,7 +65,7 @@ class UserPreferencesRepository(
             hapticEnabled = prefs[Keys.HAPTIC_ENABLED] ?: true,
             visualEnabled = prefs[Keys.VISUAL_ENABLED] ?: true,
             soundEnabled = prefs[Keys.SOUND_ENABLED] ?: false,
-            phoneNotificationEnabled = prefs[Keys.PHONE_NOTIFICATION_ENABLED] ?: false,
+            phoneNotificationEnabled = prefs[Keys.PHONE_NOTIFICATION_ENABLED] ?: true,
         )
     }
 
@@ -73,12 +81,34 @@ class UserPreferencesRepository(
         prefs[Keys.CALIBRATION_ROLL]?.let { java.lang.Float.intBitsToFloat(it.toInt()) }
     }
 
-    override suspend fun setPairedWatchId(watchId: String?) {
+    override val hasSlumpReference: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.HAS_SLUMP_REF] ?: false
+    }
+
+    override val slumpReferencePitch: Flow<Float?> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SLUMP_PITCH]?.let { java.lang.Float.intBitsToFloat(it.toInt()) }
+    }
+
+    override val slumpReferenceRoll: Flow<Float?> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SLUMP_ROLL]?.let { java.lang.Float.intBitsToFloat(it.toInt()) }
+    }
+
+    override val slumpDurationThresholdMs: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[Keys.SLUMP_DURATION_MS] ?: DEFAULT_SLUMP_DURATION_MS
+    }
+
+    override val repeatAlertIntervalMs: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[Keys.REPEAT_ALERT_MS] ?: DEFAULT_REPEAT_ALERT_MS
+    }
+
+    override suspend fun setPairedWatchId(watchId: String?, pairedAtMs: Long?) {
         context.dataStore.edit { prefs ->
             if (watchId == null) {
                 prefs.remove(Keys.PAIRED_WATCH_ID)
+                prefs.remove(Keys.PAIRED_AT)
             } else {
                 prefs[Keys.PAIRED_WATCH_ID] = watchId
+                prefs[Keys.PAIRED_AT] = pairedAtMs ?: System.currentTimeMillis()
             }
         }
     }
@@ -117,5 +147,29 @@ class UserPreferencesRepository(
             prefs[Keys.CALIBRATION_PITCH] = pitch.toRawBits().toLong()
             prefs[Keys.CALIBRATION_ROLL] = roll.toRawBits().toLong()
         }
+    }
+
+    override suspend fun setSlumpReference(pitch: Float, roll: Float) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.HAS_SLUMP_REF] = true
+            prefs[Keys.SLUMP_PITCH] = pitch.toRawBits().toLong()
+            prefs[Keys.SLUMP_ROLL] = roll.toRawBits().toLong()
+        }
+    }
+
+    override suspend fun setSlumpTiming(slumpDurationThresholdMs: Long, repeatAlertIntervalMs: Long) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.SLUMP_DURATION_MS] = slumpDurationThresholdMs.coerceIn(MIN_SLUMP_DURATION_MS, MAX_SLUMP_DURATION_MS)
+            prefs[Keys.REPEAT_ALERT_MS] = repeatAlertIntervalMs.coerceIn(MIN_REPEAT_ALERT_MS, MAX_REPEAT_ALERT_MS)
+        }
+    }
+
+    companion object {
+        const val DEFAULT_SLUMP_DURATION_MS = 30_000L
+        const val DEFAULT_REPEAT_ALERT_MS = 5_000L
+        const val MIN_SLUMP_DURATION_MS = 5_000L
+        const val MAX_SLUMP_DURATION_MS = 300_000L
+        const val MIN_REPEAT_ALERT_MS = 2_000L
+        const val MAX_REPEAT_ALERT_MS = 30_000L
     }
 }

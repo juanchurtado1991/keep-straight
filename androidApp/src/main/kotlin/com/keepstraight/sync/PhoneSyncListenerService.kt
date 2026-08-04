@@ -1,14 +1,14 @@
 package com.keepstraight.sync
 
+import android.util.Log
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import com.ghost.serialization.Ghost
 import com.keepstraight.KeepStraightApp
-import com.keepstraight.notifications.PostureNotificationManager
-import com.keepstraight.shared.model.CalibrationCaptureResult
 import com.keepstraight.shared.model.PostureEvent
 import com.keepstraight.shared.model.PostureEventBatch
 import com.keepstraight.shared.model.PostureEventType
+import com.keepstraight.shared.sync.CalibrationResultCodec
 import com.keepstraight.shared.sync.SyncPaths
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,8 +24,12 @@ class PhoneSyncListenerService : WearableListenerService() {
         get() = application as KeepStraightApp
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
+        Log.i(TAG, "Service message ${messageEvent.path} from ${messageEvent.sourceNodeId}")
         serviceScope.launch {
             when (messageEvent.path) {
+                SyncPaths.PING -> {
+                    Log.i(TAG, "Ping from watch (service) payload=${messageEvent.data.decodeToString()}")
+                }
                 SyncPaths.EVENTS -> handleEvent(messageEvent.data)
                 SyncPaths.EVENTS_BATCH -> handleEventBatch(messageEvent.data)
                 SyncPaths.CALIBRATE_RESULT -> handleCalibrateResult(messageEvent.data)
@@ -40,7 +44,7 @@ class PhoneSyncListenerService : WearableListenerService() {
             if (event.eventType == PostureEventType.SLUMP_DETECTED) {
                 maybeNotifySlump(event)
             }
-        }
+        }.onFailure { Log.e(TAG, "Failed handling event", it) }
     }
 
     private suspend fun handleEventBatch(data: ByteArray) {
@@ -51,15 +55,15 @@ class PhoneSyncListenerService : WearableListenerService() {
                 .filter { it.eventType == PostureEventType.SLUMP_DETECTED }
                 .maxByOrNull { it.timestamp }
                 ?.let { maybeNotifySlump(it) }
-        }
+        }.onFailure { Log.e(TAG, "Failed handling event batch", it) }
     }
 
     private suspend fun handleCalibrateResult(data: ByteArray) {
         runCatching {
-            val result: CalibrationCaptureResult = Ghost.deserialize(data)
+            val result = CalibrationResultCodec.decode(data)
             app.userPreferencesRepository.setCalibration(result.basePitch, result.baseRoll)
             app.syncManager.onCalibrationResult(result)
-        }
+        }.onFailure { Log.e(TAG, "Failed handling calibrate result", it) }
     }
 
     private suspend fun maybeNotifySlump(event: PostureEvent) {
@@ -70,5 +74,9 @@ class PhoneSyncListenerService : WearableListenerService() {
         if (alertPrefs.phoneNotificationEnabled) {
             app.notificationManager.showSlumpAlert(event.durationSeconds)
         }
+    }
+
+    private companion object {
+        const val TAG = "KeepStraightPhone"
     }
 }

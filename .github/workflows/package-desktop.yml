@@ -1,6 +1,7 @@
 name: Package desktop
 
-# Builds Win/macOS/Linux installers on every push/PR and replaces the ci-latest release assets.
+# Builds Win/macOS/Linux installers (with companion APKs + adb) on every push/PR
+# and replaces the ci-latest release assets.
 on:
   push:
     branches: [main]
@@ -16,8 +17,76 @@ permissions:
   actions: read
 
 jobs:
+  companion-apks:
+    name: Build companion APKs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;35.0.0" "platform-tools"
+
+      - name: Ensure debug keystore (sideload signing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          KS="$HOME/.android/debug.keystore"
+          if [[ ! -f "$KS" ]]; then
+            keytool -genkeypair -v \
+              -keystore "$KS" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble release APKs
+        shell: bash
+        run: |
+          ./gradlew :androidApp:assembleRelease :wearApp:assembleRelease \
+            --no-daemon --console=plain
+
+      - name: Stage companion APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p companion-apks
+          PHONE=$(find androidApp/build/outputs/apk/release -name '*.apk' | head -1)
+          WEAR=$(find wearApp/build/outputs/apk/release -name '*.apk' | head -1)
+          test -n "$PHONE" && test -n "$WEAR"
+          cp -v "$PHONE" companion-apks/keepstraight-phone.apk
+          cp -v "$WEAR" companion-apks/keepstraight-wear.apk
+          ls -lah companion-apks
+
+      - name: Upload companion APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeepStraight-companion-apks
+          path: companion-apks/
+          if-no-files-found: error
+          retention-days: 14
+
   package:
     name: Package (${{ matrix.target }})
+    needs: companion-apks
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -52,18 +121,35 @@ jobs:
         if: matrix.target == 'windows'
         shell: bash
         run: |
-          # Runners often already have a WiX 3.14.x build; don't pin an older Chocolatey revision.
           if command -v candle >/dev/null 2>&1; then
-            echo "WiX already on PATH: $(candle -? 2>&1 | head -1 || true)"
+            echo "WiX already on PATH"
           elif [[ -d "/c/Program Files (x86)/WiX Toolset v3.14/bin" ]]; then
             echo "WiX found under Program Files"
-            echo "/c/Program Files (x86)/WiX Toolset v3.14/bin" >> "$GITHUB_PATH"
           else
             choco install wixtoolset -y --no-progress
           fi
           if [[ -d "/c/Program Files (x86)/WiX Toolset v3.14/bin" ]]; then
             echo "/c/Program Files (x86)/WiX Toolset v3.14/bin" >> "$GITHUB_PATH"
           fi
+
+      - name: Download companion APKs into desktop resources
+        uses: actions/download-artifact@v4
+        with:
+          name: KeepStraight-companion-apks
+          path: desktopApp/src/main/resources/apks
+
+      - name: Verify bundled adb + APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -lah desktopApp/src/main/resources/apks/
+          test -f desktopApp/src/main/resources/apks/keepstraight-phone.apk
+          test -f desktopApp/src/main/resources/apks/keepstraight-wear.apk
+          test -f desktopApp/src/main/resources/adb/macos/adb
+          test -f desktopApp/src/main/resources/adb/linux/adb
+          test -f desktopApp/src/main/resources/adb/windows/adb.exe
+          test -f desktopApp/src/main/resources/adb/windows/AdbWinApi.dll
+          test -f desktopApp/src/main/resources/adb/windows/AdbWinUsbApi.dll
 
       - name: Download MoveNet model
         shell: bash
@@ -86,6 +172,7 @@ jobs:
         env:
           PACKAGE_VERSION: "1.0.${{ github.run_number }}"
         run: |
+          # APKs already sit in src/main/resources/apks; skip rebuilding Android here.
           ./gradlew ${{ matrix.tasks }} \
             -Pkeepstraight.skipApkSync=true \
             -Pkeepstraight.packageVersion="$PACKAGE_VERSION" \
@@ -115,7 +202,6 @@ jobs:
     name: Publish ci-latest release
     needs: package
     runs-on: ubuntu-latest
-    # Same-repo pushes/PRs / manual runs overwrite the shared release. Fork PRs only get job artifacts.
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'push' ||
@@ -148,6 +234,7 @@ jobs:
           Source: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           Ref: ${{ github.ref }}
 
+          Each installer bundles MoveNet, platform adb (Win/macOS/Linux), and the phone + watch APKs for wireless sideload.
           These assets are overwritten on every push/PR build from this repository."
 
           if gh release view ci-latest >/dev/null 2>&1; then

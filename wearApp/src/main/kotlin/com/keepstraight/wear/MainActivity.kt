@@ -47,8 +47,13 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val app = application as KeepStraightWearApp
-            val status by app.monitoringSession.statusText.collectAsStateWithLifecycle()
-            MonitoringScreen(statusText = status, flashVisible = flashVisible)
+            val state by app.monitoringSession.monitoringState.collectAsStateWithLifecycle()
+            val calibrating by app.monitoringSession.isCalibrating.collectAsStateWithLifecycle()
+            MonitoringScreen(
+                state = state,
+                isCalibrating = calibrating,
+                flashVisible = flashVisible,
+            )
         }
     }
 
@@ -60,6 +65,7 @@ class MainActivity : ComponentActivity() {
             IntentFilter(AlertDispatcher.ACTION_ALERT_FLASH),
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
+        (application as KeepStraightWearApp).inboundHandler.onUiVisible()
     }
 
     override fun onStop() {

@@ -6,12 +6,24 @@
     <string name="notification_title">Keep Straight</string>
     <string name="notification_monitoring_active">Monitoring posture</string>
 
-    <string name="status_monitoring">Monitoring</string>
+    <string name="status_monitoring">Ready</string>
+    <string name="status_monitoring_hint">Desktop detects posture — watch vibrates on alerts</string>
     <string name="status_alerts_paused">Alerts paused</string>
-    <string name="status_algorithm_off">Monitoring off</string>
+    <string name="status_alerts_paused_hint">Resume alerts from the phone app</string>
+    <string name="status_algorithm_off">Standby</string>
+    <string name="status_algorithm_off_hint">Turn on Monitoring from the phone app</string>
     <string name="status_not_sitting">Not sitting</string>
+    <string name="status_not_sitting_hint">Paused while you move</string>
     <string name="status_not_worn">Not worn</string>
+    <string name="status_not_worn_hint">Put watch on to resume</string>
     <string name="status_phone_retry">Phone disconnected</string>
-    <string name="status_phone_paused">Paused — reconnect phone</string>
+    <string name="status_phone_retry_hint">Retrying sync…</string>
+    <string name="status_phone_paused">Paused</string>
+    <string name="status_phone_paused_hint">Reconnect from phone</string>
     <string name="status_dnd">Do not disturb</string>
+    <string name="status_dnd_hint">Tracking on — alerts muted</string>
+    <string name="status_calibrating">Calibrating</string>
+    <string name="status_calibrating_hint">Hold still…</string>
+    <string name="status_deviation">%1$d° from upright</string>
+    <string name="status_slump_score">Slump %1$d%%</string>
 </resources>
