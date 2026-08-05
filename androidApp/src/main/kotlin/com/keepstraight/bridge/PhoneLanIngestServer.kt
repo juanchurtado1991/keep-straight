@@ -65,6 +65,7 @@ class PhoneLanIngestServer(
     private var authToken: String? = prefs.getString(AndroidBridgePrefsKeys.TOKEN, null)
 
     private val pairAttemptLock = Any()
+    private val serverLock = Any()
     private var pairingCodeExpiresAtMs = 0L
     private var pairingAttemptCount = 0
     private var pairingAttemptWindowStartMs = 0L
@@ -84,9 +85,10 @@ class PhoneLanIngestServer(
     var onPairingStateChanged: (() -> Unit)? = null
 
     fun start() {
-        if (server != null) return
-        _localAddresses.value = discoverIpv4Addresses()
-        server = embeddedServer(CIO, port = DesktopLanProtocol.DEFAULT_PORT, host = "0.0.0.0") {
+        synchronized(serverLock) {
+            if (server != null) return
+            _localAddresses.value = discoverIpv4Addresses()
+            server = embeddedServer(CIO, port = DesktopLanProtocol.DEFAULT_PORT, host = "0.0.0.0") {
             install(ContentNegotiation) {
                 ghost()
             }
@@ -202,11 +204,29 @@ class PhoneLanIngestServer(
                     }
                     call.respond(DesktopLanAckResponse())
                 }
+                post(DesktopLanProtocol.PATH_UNPAIR) {
+                    val token = call.request.header(DesktopLanProtocol.HEADER_TOKEN)
+                    if (!isAuthorized(token)) {
+                        call.respondText(
+                            context.getString(R.string.lan_http_unauthorized),
+                            status = HttpStatusCode.Unauthorized,
+                        )
+                        return@post
+                    }
+                    authToken = null
+                    prefs.edit().remove(AndroidBridgePrefsKeys.TOKEN).commit()
+                    _pairingCode.value = null
+                    pairingCodeExpiresAtMs = 0L
+                    _desktopPaired.value = false
+                    onPairingStateChanged?.invoke()
+                    call.respond(DesktopLanAckResponse())
+                }
             }
         }.also {
             it.start(wait = false)
             _isRunning.value = true
             Log.i(TAG, "Desktop LAN ingest listening on ${DesktopLanProtocol.DEFAULT_PORT}")
+        }
         }
     }
 
@@ -219,9 +239,14 @@ class PhoneLanIngestServer(
     }
 
     fun generatePairingCode(): String {
+        val now = System.currentTimeMillis()
+        val existing = _pairingCode.value
+        if (existing != null && now <= pairingCodeExpiresAtMs) {
+            return existing
+        }
         val code = Random.nextInt(100000, 999999).toString()
         _pairingCode.value = code
-        pairingCodeExpiresAtMs = System.currentTimeMillis() + PAIR_CODE_TTL_MS
+        pairingCodeExpiresAtMs = now + PAIR_CODE_TTL_MS
         synchronized(pairAttemptLock) {
             pairingAttemptCount = 0
             pairingAttemptWindowStartMs = System.currentTimeMillis()
