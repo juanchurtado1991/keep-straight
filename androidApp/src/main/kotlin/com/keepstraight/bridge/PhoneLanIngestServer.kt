@@ -37,7 +37,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import java.net.NetworkInterface
 import java.util.UUID
 import kotlin.random.Random
@@ -99,7 +98,7 @@ class PhoneLanIngestServer(
                         )
                         return@get
                     }
-                    val settings = runBlocking { currentPhoneSettings() }
+                    val settings = currentPhoneSettings()
                     call.respondText(
                         DesktopLanJson.settingsToJson(settings),
                         ContentType.Application.Json,
@@ -184,7 +183,7 @@ class PhoneLanIngestServer(
                         )
                         return@post
                     }
-                    runBlocking { handleEvent(event) }
+                    handleEvent(event)
                     call.respondText("""{"ok":true}""", ContentType.Application.Json)
                 }
             }
