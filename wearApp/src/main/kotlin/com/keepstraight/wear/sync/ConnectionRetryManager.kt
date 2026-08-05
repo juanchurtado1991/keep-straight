@@ -48,6 +48,8 @@ class ConnectionRetryManager(
         scheduleNextRetry()
     }
 
+    fun isRetryActive(): Boolean = isRetryActive(context)
+
     private fun scheduleNextRetry() {
         val triggerAt = SystemClock.elapsedRealtime() + ConnectionRetryPolicy.RETRY_INTERVAL_MS
         alarmManager.setExactAndAllowWhileIdle(
