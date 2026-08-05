@@ -51,8 +51,18 @@ class AdbInstaller(
     private suspend fun <T> onIo(block: () -> T): T = runInterruptible(Dispatchers.IO, block)
 
     fun resolveAdb(): AdbResult<File> {
-        bundledAdb()?.let { return AdbResult.Ok(it) }
-        systemAdb()?.let { return AdbResult.Ok(it) }
+        try {
+            bundledAdb()?.let { return AdbResult.Ok(it) }
+            systemAdb()?.let { return AdbResult.Ok(it) }
+        } catch (e: Exception) {
+            return AdbResult.Err(
+                kind = AdbErrorKind.UNKNOWN,
+                title = "Couldn’t prepare the installer tool",
+                body = "Close other Android tools (Android Studio, platform-tools), then try again. " +
+                    "If it keeps failing, restart KeepStraight.",
+                detail = e.message,
+            )
+        }
         return AdbResult.Err(
             kind = AdbErrorKind.ADB_MISSING,
             title = "Something’s missing on this computer",
@@ -336,47 +346,96 @@ class AdbInstaller(
 
     private fun extractResourceApk(path: String): File? {
         val stream = javaClass.classLoader.getResourceAsStream(path) ?: return null
-        val out = File(System.getProperty("java.io.tmpdir"), "keepstraight-${File(path).name}")
-        stream.use { input -> out.outputStream().use { output -> input.copyTo(output) } }
-        return out.takeIf { it.isFile && it.length() > 0 }
+        val outDir = File(System.getProperty("java.io.tmpdir"), "keepstraight-apks")
+        outDir.mkdirs()
+        val out = File(outDir, File(path).name)
+        if (out.isFile && out.length() > 0) {
+            return out
+        }
+        return try {
+            stream.use { input -> out.outputStream().use { output -> input.copyTo(output) } }
+            out.takeIf { it.isFile && it.length() > 0 }
+        } catch (_: Exception) {
+            out.takeIf { it.isFile && it.length() > 0 }
+        }
     }
 
     private fun bundledAdb(): File? {
-        val os = System.getProperty("os.name").orEmpty().lowercase()
-        val folder = when {
-            os.contains("mac") -> "macos"
-            os.contains("win") -> "windows"
-            else -> "linux"
+        cachedBundledAdb?.takeIf { it.isFile && it.length() > 0 }?.let { cached ->
+            ensureUnixExecutable(cached)
+            return cached
         }
-        val isWindows = os.contains("win")
-        val exeName = if (isWindows) "adb.exe" else "adb"
-        extractResourceBinary("adb/$folder/$exeName")?.let { adb ->
+
+        synchronized(BundledAdbLock) {
+            cachedBundledAdb?.takeIf { it.isFile && it.length() > 0 }?.let { cached ->
+                ensureUnixExecutable(cached)
+                return cached
+            }
+
+            val os = System.getProperty("os.name").orEmpty().lowercase()
+            val folder = when {
+                os.contains("mac") -> "macos"
+                os.contains("win") -> "windows"
+                else -> "linux"
+            }
+            val isWindows = os.contains("win")
+            val exeName = if (isWindows) "adb.exe" else "adb"
+            val adb = extractResourceBinary("adb/$folder/$exeName")
+                ?: resourceRoot?.let { root ->
+                    File(root, "adb/$folder/$exeName").takeIf { it.isFile }
+                }
+                ?: return null
+
             // Windows adb needs its WinUSB helper DLLs beside the exe.
             if (isWindows) {
                 extractResourceBinary("adb/windows/AdbWinApi.dll")
                 extractResourceBinary("adb/windows/AdbWinUsbApi.dll")
             } else {
-                adb.setExecutable(true)
+                ensureUnixExecutable(adb)
             }
+            cachedBundledAdb = adb
             return adb
         }
-        resourceRoot?.let { root ->
-            val f = File(root, "adb/$folder/$exeName")
-            if (f.isFile) {
-                if (!isWindows) f.setExecutable(true)
-                return f
-            }
-        }
-        return null
     }
 
+    /** Linux/macOS: adb must stay executable after extract or reuse from disk. */
+    private fun ensureUnixExecutable(file: File) {
+        if (System.getProperty("os.name").orEmpty().lowercase().contains("win")) return
+        if (!file.isFile) return
+        if (!file.canExecute()) {
+            file.setReadable(true, false)
+            file.setExecutable(true, false)
+        }
+    }
+
+    /**
+     * Extract bundled adb/DLLs once under the user profile (not %TEMP%).
+     * On Windows, adb.exe is locked while the adb server runs — never overwrite an existing copy.
+     */
     private fun extractResourceBinary(path: String): File? {
-        val stream = javaClass.classLoader.getResourceAsStream(path) ?: return null
-        val outDir = File(System.getProperty("java.io.tmpdir"), "keepstraight-adb")
+        val outDir = adbInstallDir()
         outDir.mkdirs()
         val out = File(outDir, File(path).name)
-        stream.use { input -> out.outputStream().use { output -> input.copyTo(output) } }
-        return out.takeIf { it.isFile }
+        if (out.isFile && out.length() > 0) {
+            ensureUnixExecutable(out)
+            return out
+        }
+
+        val stream = javaClass.classLoader.getResourceAsStream(path) ?: return null
+        return try {
+            stream.use { input ->
+                out.outputStream().use { output -> input.copyTo(output) }
+            }
+            out.takeIf { it.isFile && it.length() > 0 }?.also { ensureUnixExecutable(it) }
+        } catch (_: Exception) {
+            // File may be locked (Windows adb server) or ETXTBSY on Linux — reuse if present.
+            out.takeIf { it.isFile && it.length() > 0 }?.also { ensureUnixExecutable(it) }
+        }
+    }
+
+    private fun adbInstallDir(): File {
+        val home = System.getProperty("user.home").orEmpty().ifBlank { "." }
+        return File(home, ".keepstraight/adb")
     }
 
     private fun systemAdb(): File? {
@@ -414,12 +473,17 @@ class AdbInstaller(
             // The user cancelled (Stop waiting): kill the child instead of orphaning an adb process.
             process?.destroyForcibly()
             throw interrupted
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             null
         }
     }
 
     private companion object {
+        private val BundledAdbLock = Any()
+
+        @Volatile
+        private var cachedBundledAdb: File? = null
+
         val PHONE_APK_MISSING = AdbResult.Err(
             AdbErrorKind.APK_MISSING,
             "Phone app package missing",

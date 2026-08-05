@@ -74,31 +74,45 @@ fun WirelessWatchInstallStep(
         errorDetail = err.detail
     }
 
+    fun showUnexpected(e: Throwable) {
+        errorTitle = "Something went wrong"
+        errorBody = "Close Android Studio or other wireless-debug tools, then try Connect & install again."
+        errorDetail = e.message?.takeIf { it.isNotBlank() }
+    }
+
     fun refreshWatches() {
         job?.cancel()
         clearError()
         scanning = true
         status = "Looking for a watch already on Wi‑Fi…"
         job = scope.launch {
-            when (val r = installer.listReadyWatches()) {
-                is AdbResult.Ok -> {
-                    readyWatches = r.value
-                    scanning = false
-                    if (r.value.isNotEmpty()) {
-                        showManual = false
-                        status = "Watch ready — tap Install."
-                    } else {
+            try {
+                when (val r = installer.listReadyWatches()) {
+                    is AdbResult.Ok -> {
+                        readyWatches = r.value
+                        scanning = false
+                        if (r.value.isNotEmpty()) {
+                            showManual = false
+                            status = "Watch ready — tap Install."
+                        } else {
+                            showManual = true
+                            status = "No watch connected yet. Turn on Wireless debugging on the watch, then Search again — or type the address below."
+                        }
+                    }
+                    is AdbResult.Err -> {
+                        readyWatches = emptyList()
+                        scanning = false
                         showManual = true
-                        status = "No watch connected yet. Turn on Wireless debugging on the watch, then Search again — or type the address below."
+                        status = "Couldn’t scan devices — type what the watch shows."
+                        showError(r)
                     }
                 }
-                is AdbResult.Err -> {
-                    readyWatches = emptyList()
-                    scanning = false
-                    showManual = true
-                    status = "Couldn’t scan devices — type what the watch shows."
-                    showError(r)
-                }
+            } catch (e: Exception) {
+                readyWatches = emptyList()
+                scanning = false
+                showManual = true
+                status = "Couldn’t scan devices — type what the watch shows."
+                showUnexpected(e)
             }
         }
     }
@@ -109,17 +123,23 @@ fun WirelessWatchInstallStep(
         busy = true
         status = "Installing KeepStraight on the watch…"
         job = scope.launch {
-            when (val installed = installer.installWearApk(serial)) {
-                is AdbResult.Ok -> {
-                    busy = false
-                    status = "Installed — opening KeepStraight on the watch"
-                    onInstalled()
+            try {
+                when (val installed = installer.installWearApk(serial)) {
+                    is AdbResult.Ok -> {
+                        busy = false
+                        status = "Installed — opening KeepStraight on the watch"
+                        onInstalled()
+                    }
+                    is AdbResult.Err -> {
+                        busy = false
+                        status = "Stopped."
+                        showError(installed)
+                    }
                 }
-                is AdbResult.Err -> {
-                    busy = false
-                    status = "Stopped."
-                    showError(installed)
-                }
+            } catch (e: Exception) {
+                busy = false
+                status = "Stopped."
+                showUnexpected(e)
             }
         }
     }
@@ -138,32 +158,38 @@ fun WirelessWatchInstallStep(
         clearError()
         busy = true
         job = scope.launch {
-            val connected = installer.pairOrConnect(
-                host = host,
-                port = port,
-                pairingCode = code.trim().takeIf { it.isNotEmpty() },
-            ) { status = it }
-            when (connected) {
-                is AdbResult.Err -> {
-                    busy = false
-                    status = "Stopped."
-                    showError(connected)
-                }
-                is AdbResult.Ok -> {
-                    status = "Installing KeepStraight on the watch…"
-                    when (val installed = installer.installWearApk(connected.value)) {
-                        is AdbResult.Ok -> {
-                            busy = false
-                            status = "Installed — opening KeepStraight on the watch"
-                            onInstalled()
-                        }
-                        is AdbResult.Err -> {
-                            busy = false
-                            status = "Stopped."
-                            showError(installed)
+            try {
+                val connected = installer.pairOrConnect(
+                    host = host,
+                    port = port,
+                    pairingCode = code.trim().takeIf { it.isNotEmpty() },
+                ) { status = it }
+                when (connected) {
+                    is AdbResult.Err -> {
+                        busy = false
+                        status = "Stopped."
+                        showError(connected)
+                    }
+                    is AdbResult.Ok -> {
+                        status = "Installing KeepStraight on the watch…"
+                        when (val installed = installer.installWearApk(connected.value)) {
+                            is AdbResult.Ok -> {
+                                busy = false
+                                status = "Installed — opening KeepStraight on the watch"
+                                onInstalled()
+                            }
+                            is AdbResult.Err -> {
+                                busy = false
+                                status = "Stopped."
+                                showError(installed)
+                            }
                         }
                     }
                 }
+            } catch (e: Exception) {
+                busy = false
+                status = "Stopped."
+                showUnexpected(e)
             }
         }
     }

@@ -75,29 +75,36 @@ fun WirelessPhoneInstallStep(
         busy = true
         status = "Scan this code with your phone"
         pairJob = scope.launch {
-            when (val connected = installer.pairConnectViaQr(next) { status = it }) {
-                is AdbResult.Ok -> {
-                    status = "Installing KeepStraight…"
-                    when (val installed = installer.installPhoneApk(connected.value)) {
-                        is AdbResult.Ok -> {
-                            busy = false
-                            status = "Installed — opening KeepStraight on your phone"
-                            onInstalled()
-                        }
-                        is AdbResult.Err -> {
-                            busy = false
-                            errorTitle = installed.title
-                            errorBody = installed.body
-                            errorDetail = installed.detail
+            try {
+                when (val connected = installer.pairConnectViaQr(next) { status = it }) {
+                    is AdbResult.Ok -> {
+                        status = "Installing KeepStraight…"
+                        when (val installed = installer.installPhoneApk(connected.value)) {
+                            is AdbResult.Ok -> {
+                                busy = false
+                                status = "Installed — opening KeepStraight on your phone"
+                                onInstalled()
+                            }
+                            is AdbResult.Err -> {
+                                busy = false
+                                errorTitle = installed.title
+                                errorBody = installed.body
+                                errorDetail = installed.detail
+                            }
                         }
                     }
+                    is AdbResult.Err -> {
+                        busy = false
+                        errorTitle = connected.title
+                        errorBody = connected.body
+                        errorDetail = connected.detail
+                    }
                 }
-                is AdbResult.Err -> {
-                    busy = false
-                    errorTitle = connected.title
-                    errorBody = connected.body
-                    errorDetail = connected.detail
-                }
+            } catch (e: Exception) {
+                busy = false
+                errorTitle = "Something went wrong"
+                errorBody = "Close Android Studio or other wireless-debug tools, then tap Show a new code."
+                errorDetail = e.message?.takeIf { it.isNotBlank() }
             }
         }
     }
