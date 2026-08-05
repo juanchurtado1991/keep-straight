@@ -2,6 +2,7 @@ package com.keepstraight.bridge
 
 import android.content.Context
 import android.util.Log
+import com.keepstraight.R
 import com.keepstraight.data.PostureHistoryRepository
 import com.keepstraight.data.UserPreferencesRepository
 import com.keepstraight.shared.bridge.DesktopLanJson
@@ -53,10 +54,10 @@ class PhoneLanIngestServer(
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var server: EmbeddedServer<*, *>? = null
 
-    private val prefs = context.getSharedPreferences("desktop_bridge", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(AndroidBridgePrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
 
     @Volatile
-    private var authToken: String? = prefs.getString("token", null)
+    private var authToken: String? = prefs.getString(AndroidBridgePrefsKeys.TOKEN, null)
 
     private val pairAttemptLock = Any()
     private var pairingCodeExpiresAtMs = 0L
@@ -91,7 +92,10 @@ class PhoneLanIngestServer(
                 get(DesktopLanProtocol.PATH_SETTINGS) {
                     val token = call.request.header(DesktopLanProtocol.HEADER_TOKEN)
                     if (!isAuthorized(token)) {
-                        call.respondText("unauthorized", status = HttpStatusCode.Unauthorized)
+                        call.respondText(
+                            context.getString(R.string.lan_http_unauthorized),
+                            status = HttpStatusCode.Unauthorized,
+                        )
                         return@get
                     }
                     val settings = runBlocking { currentPhoneSettings() }
@@ -106,22 +110,25 @@ class PhoneLanIngestServer(
                     val expected = _pairingCode.value
                     val now = System.currentTimeMillis()
                     if (req == null || expected == null) {
-                        call.respondPairFailure("Invalid code")
+                        call.respondPairFailure(context.getString(R.string.lan_pair_invalid_code))
                         return@post
                     }
                     if (now > pairingCodeExpiresAtMs) {
                         _pairingCode.value = null
-                        call.respondPairFailure("Code expired")
+                        call.respondPairFailure(context.getString(R.string.lan_pair_code_expired))
                         return@post
                     }
                     if (!recordPairAttempt(now)) {
-                        call.respondPairFailure("Too many attempts")
+                        call.respondPairFailure(context.getString(R.string.lan_pair_too_many_attempts))
                         return@post
                     }
                     if (req.code != expected) {
                         call.respondText(
                             DesktopLanJson.pairResponseToJson(
-                                DesktopPairResponse(ok = false, message = "Invalid code"),
+                                DesktopPairResponse(
+                                    ok = false,
+                                    message = context.getString(R.string.lan_pair_invalid_code),
+                                ),
                             ),
                             ContentType.Application.Json,
                             HttpStatusCode.Unauthorized,
@@ -131,7 +138,10 @@ class PhoneLanIngestServer(
                     if (req.protocolVersion != DesktopLanProtocol.VERSION) {
                         call.respondText(
                             DesktopLanJson.pairResponseToJson(
-                                DesktopPairResponse(ok = false, message = "Update KeepStraight"),
+                                DesktopPairResponse(
+                                    ok = false,
+                                    message = context.getString(R.string.lan_pair_update_app),
+                                ),
                             ),
                             ContentType.Application.Json,
                             HttpStatusCode.BadRequest,
@@ -140,7 +150,7 @@ class PhoneLanIngestServer(
                     }
                     val token = UUID.randomUUID().toString()
                     authToken = token
-                    prefs.edit().putString("token", token).commit()
+                    prefs.edit().putString(AndroidBridgePrefsKeys.TOKEN, token).commit()
                     _pairingCode.value = null
                     pairingCodeExpiresAtMs = 0L
                     pairingAttemptCount = 0
@@ -148,7 +158,11 @@ class PhoneLanIngestServer(
                     onPairingStateChanged?.invoke()
                     call.respondText(
                         DesktopLanJson.pairResponseToJson(
-                            DesktopPairResponse(ok = true, token = token, message = "Paired"),
+                            DesktopPairResponse(
+                                ok = true,
+                                token = token,
+                                message = context.getString(R.string.lan_pair_success),
+                            ),
                         ),
                         ContentType.Application.Json,
                     )
@@ -156,12 +170,18 @@ class PhoneLanIngestServer(
                 post(DesktopLanProtocol.PATH_EVENT) {
                     val token = call.request.header(DesktopLanProtocol.HEADER_TOKEN)
                     if (!isAuthorized(token)) {
-                        call.respondText("unauthorized", status = HttpStatusCode.Unauthorized)
+                        call.respondText(
+                            context.getString(R.string.lan_http_unauthorized),
+                            status = HttpStatusCode.Unauthorized,
+                        )
                         return@post
                     }
                     val event = DesktopLanJson.parseEvent(call.receiveText())
                     if (event == null || event.protocolVersion != DesktopLanProtocol.VERSION) {
-                        call.respondText("bad request", status = HttpStatusCode.BadRequest)
+                        call.respondText(
+                            context.getString(R.string.lan_http_bad_request),
+                            status = HttpStatusCode.BadRequest,
+                        )
                         return@post
                     }
                     runBlocking { handleEvent(event) }
@@ -203,7 +223,7 @@ class PhoneLanIngestServer(
 
     fun clearPairing() {
         authToken = null
-        prefs.edit().remove("token").commit()
+        prefs.edit().remove(AndroidBridgePrefsKeys.TOKEN).commit()
         _pairingCode.value = null
         pairingCodeExpiresAtMs = 0L
         _desktopPaired.value = false
@@ -212,7 +232,7 @@ class PhoneLanIngestServer(
 
     private fun isAuthorized(token: String?): Boolean {
         if (token.isNullOrBlank()) return false
-        val expected = authToken ?: prefs.getString("token", null)?.also { authToken = it }
+        val expected = authToken ?: prefs.getString(AndroidBridgePrefsKeys.TOKEN, null)?.also { authToken = it }
         return token == expected
     }
 
