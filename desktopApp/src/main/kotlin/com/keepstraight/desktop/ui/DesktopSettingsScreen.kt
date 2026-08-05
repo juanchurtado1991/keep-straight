@@ -1,5 +1,8 @@
 package com.keepstraight.desktop.ui
 
+import com.keepstraight.desktop.presentation.UserMessage
+import com.keepstraight.desktop.ui.i18n.DesktopMessageResolver
+import com.keepstraight.desktop.ui.i18n.DesktopStrings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -70,23 +73,23 @@ fun DesktopSettingsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Settings", style = MaterialTheme.typography.headlineLarge)
-            TextButton(onClick = onBack) { Text("Done") }
+            Text(DesktopStrings.settingsTitle(), style = MaterialTheme.typography.headlineLarge)
+            TextButton(onClick = onBack) { Text(DesktopStrings.actionDone()) }
         }
 
-        SettingsSection("Alerts") {
+        SettingsSection(DesktopStrings.settingsSectionAlerts()) {
             SettingsToggle(
-                "Play a sound when you slouch",
-                "Off by default — it can be distracting.",
+                DesktopStrings.settingsSoundLabel(),
+                DesktopStrings.settingsSoundSubtitle(),
                 sound,
                 controller::setDesktopSoundEnabled,
             )
             SettingsToggle(
-                "Show a desktop notification",
+                DesktopStrings.settingsNotificationLabel(),
                 if (NativeDesktopNotifier.isLikelySupported()) {
-                    "Native OS banners — works while the app is in the tray."
+                    DesktopStrings.settingsNotificationSubtitleSupported()
                 } else {
-                    "Native notifications unavailable on this computer."
+                    DesktopStrings.settingsNotificationSubtitleUnsupported()
                 },
                 notifications,
                 controller::setDesktopNotificationEnabled,
@@ -96,11 +99,11 @@ fun DesktopSettingsScreen(
                     onClick = controller::sendTestDesktopNotification,
                     colors = desktopSecondaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("Send test notification") }
+                ) { Text(DesktopStrings.actionSendTestNotification()) }
             }
         }
 
-        SettingsSection("Phone & watch") {
+        SettingsSection(DesktopStrings.settingsSectionPhoneWatch()) {
             Text(
                 companionStatusText(bridgeState, bridgeHost),
                 style = MaterialTheme.typography.bodyLarge,
@@ -111,20 +114,28 @@ fun DesktopSettingsScreen(
                     onClick = onOpenCompanionSetup,
                     colors = desktopPrimaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("Set up phone & watch") }
+                ) { Text(DesktopStrings.actionSetupPhoneWatch()) }
                 if (bridgeState != BridgeConnectionState.NOT_CONFIGURED) {
                     OutlinedButton(
                         onClick = controller::reconnectBridge,
                         enabled = !bridgeBusy,
                         colors = desktopSecondaryButtonColors(),
                         shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                    ) { Text(if (bridgeBusy) "Checking…" else "Reconnect") }
+                    ) {
+                        Text(
+                            if (bridgeBusy) {
+                                DesktopStrings.actionChecking()
+                            } else {
+                                DesktopStrings.actionReconnect()
+                            },
+                        )
+                    }
                 }
             }
             if (qrActive && qrBitmap != null) {
                 Image(
                     bitmap = qrBitmap!!,
-                    contentDescription = "QR to link phone",
+                    contentDescription = DesktopStrings.settingsQrLinkCd(),
                     modifier = Modifier
                         .size(200.dp)
                         .clip(RoundedCornerShape(DesktopDimens.radiusMedium)),
@@ -133,31 +144,39 @@ fun DesktopSettingsScreen(
                     onClick = controller::cancelPairQr,
                     colors = desktopSecondaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("Cancel QR") }
+                ) { Text(DesktopStrings.actionCancelQr()) }
             } else {
                 OutlinedButton(
                     onClick = controller::showPairQr,
                     colors = desktopSecondaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("Show QR to link phone") }
+                ) { Text(DesktopStrings.actionShowQrLinkPhone()) }
             }
             TextButton(
                 onClick = controller::clearBridge,
                 enabled = bridgeState != BridgeConnectionState.NOT_CONFIGURED,
-            ) { Text("Unlink phone") }
+            ) { Text(DesktopStrings.actionUnlinkPhone()) }
             bridgeMsg?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    DesktopMessageResolver.text(it).orEmpty(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             pairMessage?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    DesktopMessageResolver.text(it).orEmpty(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 
-        SettingsSection("Camera") {
+        SettingsSection(DesktopStrings.settingsSectionCamera()) {
             Text(
-                devices.firstOrNull { it.id == selectedId }?.name
-                    ?: devices.firstOrNull()?.name
-                    ?: "No camera found",
+                devices.firstOrNull { it.id == selectedId }?.name?.let { DesktopStrings.cameraDisplayName(it) }
+                    ?: devices.firstOrNull()?.name?.let { DesktopStrings.cameraDisplayName(it) }
+                    ?: DesktopStrings.settingsNoCamera(),
                 style = MaterialTheme.typography.bodyLarge,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(DesktopDimens.rowGap)) {
@@ -168,25 +187,29 @@ fun DesktopSettingsScreen(
                             onClick = { controller.selectCamera(device.id) },
                             colors = desktopPrimaryButtonColors(),
                             shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                        ) { Text(device.name, maxLines = 1) }
+                        ) { Text(DesktopStrings.cameraDisplayName(device.name), maxLines = 1) }
                     } else {
                         OutlinedButton(
                             onClick = { controller.selectCamera(device.id) },
                             colors = desktopSecondaryButtonColors(),
                             shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                        ) { Text(device.name, maxLines = 1) }
+                        ) { Text(DesktopStrings.cameraDisplayName(device.name), maxLines = 1) }
                     }
                 }
                 OutlinedButton(
                     onClick = controller::refreshCameras,
                     colors = desktopSecondaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("Refresh") }
+                ) { Text(DesktopStrings.actionRefresh()) }
             }
         }
 
         SettingsSection(
-            if (ui.settingsFromPhone) "Sensitivity (from phone)" else "Sensitivity",
+            if (ui.settingsFromPhone) {
+                DesktopStrings.settingsSectionSensitivityFromPhone()
+            } else {
+                DesktopStrings.settingsSectionSensitivity()
+            },
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(DesktopDimens.rowGap)) {
                 SensitivityLevel.entries.forEach { level ->
@@ -197,52 +220,58 @@ fun DesktopSettingsScreen(
                             enabled = !ui.settingsFromPhone,
                             colors = desktopPrimaryButtonColors(),
                             shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                        ) { Text(level.name) }
+                        ) { Text(DesktopStrings.sensitivityLabel(level)) }
                     } else {
                         OutlinedButton(
                             onClick = { controller.setSensitivity(level) },
                             enabled = !ui.settingsFromPhone,
                             colors = desktopSecondaryButtonColors(),
                             shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                        ) { Text(level.name) }
+                        ) { Text(DesktopStrings.sensitivityLabel(level)) }
                     }
                 }
             }
             Text(
-                "First alert after ${formatMs(ui.slumpDurationThresholdMs)} · " +
-                    "repeat every ${formatMs(ui.repeatAlertIntervalMs)}",
+                DesktopStrings.settingsAlertTiming(formatMs(ui.slumpDurationThresholdMs),
+                    formatMs(ui.repeatAlertIntervalMs),
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (ui.settingsFromPhone) {
                 Text(
-                    "Your phone owns these while it’s linked. Change them in the phone app, " +
-                        "or unlink the phone to control them here.",
+                    DesktopStrings.settingsPhoneOwnsTimers(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
 
-        SettingsSection("General") {
-            SettingsToggle("Low power (fewer FPS)", null, lowPower, controller::setLowPower)
+        SettingsSection(DesktopStrings.settingsSectionGeneral()) {
             SettingsToggle(
-                label = "Open at login",
-                subtitle = openAtLoginMessage ?: if (controller.openAtLoginAvailable) {
-                    "Start KeepStraight automatically when you sign in."
-                } else {
-                    "Unavailable — no packaged app or project launcher found."
-                },
+                DesktopStrings.settingsLowPowerLabel(),
+                null,
+                lowPower,
+                controller::setLowPower,
+            )
+            SettingsToggle(
+                label = DesktopStrings.settingsOpenAtLoginLabel(),
+                subtitle = DesktopMessageResolver.text(openAtLoginMessage)
+                    ?: if (controller.openAtLoginAvailable) {
+                        DesktopStrings.settingsOpenAtLoginSubtitle()
+                    } else {
+                        DesktopStrings.settingsOpenAtLoginUnavailable()
+                    },
                 checked = openAtLogin,
                 onChange = controller::setOpenAtLogin,
                 enabled = controller.openAtLoginAvailable,
             )
             SettingsToggle(
-                label = "Start hidden in the menu bar / tray",
+                label = DesktopStrings.settingsStartHiddenLabel(),
                 subtitle = if (onHideToTray != null) {
-                    "Next launch opens quietly in the background."
+                    DesktopStrings.settingsStartHiddenSubtitle()
                 } else {
-                    "Needs a working menu bar / tray icon on this desktop."
+                    DesktopStrings.settingsStartHiddenUnavailable()
                 },
                 checked = startHidden,
                 onChange = controller::setStartHiddenInTray,
@@ -254,12 +283,12 @@ fun DesktopSettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     colors = desktopSecondaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("Hide window now") }
+                ) { Text(DesktopStrings.actionHideWindowNow()) }
             }
         }
 
         Spacer(modifier = Modifier.height(DesktopDimens.itemGap))
-        TextButton(onClick = onQuit) { Text("Quit KeepStraight") }
+        TextButton(onClick = onQuit) { Text(DesktopStrings.actionQuitApp()) }
     }
 }
 
@@ -315,14 +344,20 @@ private fun SettingsToggle(
     }
 }
 
+@Composable
 private fun companionStatusText(state: BridgeConnectionState, host: String): String = when (state) {
-    BridgeConnectionState.NOT_CONFIGURED -> "Phone not linked. Optional — desktop works on its own."
-    BridgeConnectionState.PAIRED -> "Linked with $host"
-    BridgeConnectionState.DEGRADED -> "Linked with $host, but sync is having trouble."
-    BridgeConnectionState.FAILED -> "Link broken — unlink and scan a new QR."
+    BridgeConnectionState.NOT_CONFIGURED -> DesktopStrings.settingsBridgeNotLinked()
+    BridgeConnectionState.PAIRED -> DesktopStrings.settingsBridgeLinked(host)
+    BridgeConnectionState.DEGRADED -> DesktopStrings.settingsBridgeDegraded(host)
+    BridgeConnectionState.FAILED -> DesktopStrings.settingsBridgeFailed()
 }
 
+@Composable
 private fun formatMs(ms: Long): String {
     val totalSec = (ms / 1000L).coerceAtLeast(0L)
-    return if (totalSec < 60L) "${totalSec}s" else "${totalSec / 60L}m"
+    return if (totalSec < 60L) {
+        DesktopStrings.settingsTimeSeconds(totalSec)
+    } else {
+        DesktopStrings.settingsTimeMinutes(totalSec / 60L)
+    }
 }
