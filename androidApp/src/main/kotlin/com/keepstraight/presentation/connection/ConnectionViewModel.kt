@@ -53,8 +53,8 @@ class ConnectionViewModel(
                 Result.failure(error)
             }
 
+            deviceSyncGateway.refreshConnectionStatus()
             if (result.isSuccess) {
-                deviceSyncGateway.refreshConnectionStatus()
                 _reconnectState.value = ReconnectUiState.Success
             } else {
                 _reconnectState.value = ReconnectUiState.Failed(mapReconnectError(result.exceptionOrNull()))

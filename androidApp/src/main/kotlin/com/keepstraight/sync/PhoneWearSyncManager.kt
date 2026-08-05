@@ -357,11 +357,19 @@ class PhoneWearSyncManager(
             _isConnected.value = false
             return Result.failure(DeviceSyncException(DeviceSyncFailureReason.WATCH_UNREACHABLE))
         }
-        _isConnected.value = true
 
         val resumeResult = sendControl(WatchControlCommand.RESUME_CONNECTION)
-        if (resumeResult.isFailure) return resumeResult
-        return syncAllPreferences()
+        if (resumeResult.isFailure) {
+            _isConnected.value = false
+            return resumeResult
+        }
+        val syncResult = syncAllPreferences()
+        if (syncResult.isFailure) {
+            _isConnected.value = false
+            return syncResult
+        }
+        _isConnected.value = true
+        return Result.success(Unit)
     }
 
     override suspend fun syncAllPreferences(): Result<Unit> {
