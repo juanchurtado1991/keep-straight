@@ -19,11 +19,11 @@ import com.keepstraight.shared.presentation.ReconnectUiState
 import com.keepstraight.ui.components.KeepStraightTopBar
 import com.keepstraight.ui.components.StatusPanel
 import com.keepstraight.ui.components.StatusTone
-import com.keepstraight.viewmodel.MainViewModel
+import com.keepstraight.presentation.connection.ConnectionViewModel
 
 @Composable
 fun ConnectionFlowScreen(
-    viewModel: MainViewModel,
+    viewModel: ConnectionViewModel,
     autoStart: Boolean,
     onBack: () -> Unit,
     onChangeWatch: () -> Unit,
