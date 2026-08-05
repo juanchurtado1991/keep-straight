@@ -25,7 +25,7 @@ import com.keepstraight.shared.sync.SyncCapabilities
 import com.keepstraight.shared.sync.SyncPaths
 import com.keepstraight.shared.repository.DeviceSyncException
 import com.keepstraight.shared.repository.DeviceSyncFailureReason
-import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -69,6 +69,7 @@ class PhoneWearSyncManager(
 
     private val calibrationMutex = Mutex()
     private var calibrationDeferred: CompletableDeferred<CalibrationCaptureResult>? = null
+    private var calibrationSessionId: Long = 0L
 
     init {
         messageClient.addListener(this)
@@ -127,6 +128,12 @@ class PhoneWearSyncManager(
                 if (path != SyncPaths.CALIBRATE_RESULT) continue
                 runCatching {
                     val map = DataMapItem.fromDataItem(event.dataItem).dataMap
+                    if (!map.containsKey(CalibrationResultCodec.KEY_PITCH) ||
+                        !map.containsKey(CalibrationResultCodec.KEY_ROLL) ||
+                        !map.containsKey(CalibrationResultCodec.KEY_CAPTURED_AT)
+                    ) {
+                        return@runCatching
+                    }
                     onCalibrationResult(
                         CalibrationCaptureResult(
                             basePitch = map.getFloat(CalibrationResultCodec.KEY_PITCH),
@@ -243,7 +250,10 @@ class PhoneWearSyncManager(
 
         val pitch = userPreferencesRepository.calibrationPitch.first()
         val roll = userPreferencesRepository.calibrationRoll.first()
-        return sendCalibration(buildCalibrationConfig(pitch ?: 0f, roll ?: 0f, sensitivity))
+        if (pitch == null || roll == null) {
+            return Result.success(Unit)
+        }
+        return sendCalibration(buildCalibrationConfig(pitch, roll, sensitivity))
     }
 
     private suspend fun buildCalibrationConfig(
@@ -271,6 +281,7 @@ class PhoneWearSyncManager(
 
     override suspend fun requestCalibrationCapture(): Result<Unit> {
         calibrationMutex.withLock {
+            calibrationSessionId++
             calibrationDeferred?.cancel()
             calibrationDeferred = CompletableDeferred()
         }
@@ -340,9 +351,25 @@ class PhoneWearSyncManager(
         }
     }
 
+    override suspend fun cancelCalibrationCapture() {
+        calibrationMutex.withLock {
+            calibrationSessionId++
+            calibrationDeferred?.cancel()
+            calibrationDeferred = null
+        }
+    }
+
     override suspend fun awaitCalibrationResult(timeoutMs: Long): CalibrationCaptureResult? {
-        val deferred = calibrationMutex.withLock { calibrationDeferred } ?: return null
-        return withTimeoutOrNull(timeoutMs) { deferred.await() }
+        val (deferred, sessionId) = calibrationMutex.withLock {
+            calibrationDeferred to calibrationSessionId
+        } ?: return null
+        return try {
+            withTimeoutOrNull(timeoutMs) { deferred.await() }
+        } catch (_: CancellationException) {
+            null
+        }?.takeIf {
+            calibrationMutex.withLock { calibrationSessionId == sessionId }
+        }
     }
 
     override suspend fun reconnect(): Result<Unit> {
@@ -400,18 +427,20 @@ class PhoneWearSyncManager(
     fun onCalibrationResult(result: CalibrationCaptureResult) {
         scope.launch {
             calibrationMutex.withLock {
-                val key = result.capturedAt
-                if (key == lastCalibrationResultKey) return@launch
-                lastCalibrationResultKey = key
+                val dedupKey = "${result.capturedAt}:${result.basePitch}:${result.baseRoll}"
+                if (dedupKey == lastCalibrationResultKey) return@launch
+                lastCalibrationResultKey = dedupKey
                 Log.i(TAG, "Calibration result received pitch=${result.basePitch} roll=${result.baseRoll}")
                 _calibrationResult.tryEmit(result)
-                calibrationDeferred?.takeIf { it.isActive }?.complete(result)
+                val deferred = calibrationDeferred ?: return@launch
+                if (!deferred.isActive) return@launch
+                deferred.complete(result)
             }
         }
     }
 
     @Volatile
-    private var lastCalibrationResultKey: Long = 0L
+    private var lastCalibrationResultKey: String? = null
 
     private suspend fun sendToPairedWatch(path: String, payload: ByteArray): Result<Unit> =
         withContext(Dispatchers.IO) {

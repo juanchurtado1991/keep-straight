@@ -22,7 +22,7 @@ import com.keepstraight.presentation.common.PhonePresentationConfig
 class CalibrationViewModel(
     private val calibrationController: CalibrationController,
     private val refreshConnection: RefreshWatchConnectionUseCase,
-    deviceSyncGateway: DeviceSyncGateway,
+    private val deviceSyncGateway: DeviceSyncGateway,
 ) : ViewModel(),
     FeatureStore<CalibrationUiState, CalibrationEvent, CalibrationEffect> {
 
@@ -46,24 +46,30 @@ class CalibrationViewModel(
     }
 
     private fun launchStart() {
-        calibrationJob?.cancel()
+        val previous = calibrationJob
         calibrationJob = viewModelScope.launch {
+            previous?.cancelAndJoin()
             val connected = refreshConnection()
             calibrationController.start(connected)
         }
     }
 
     private fun launchContinueSlouch() {
-        calibrationJob?.cancel()
+        val previous = calibrationJob
         calibrationJob = viewModelScope.launch {
+            previous?.cancelAndJoin()
             val connected = refreshConnection()
             calibrationController.continueWithSlouch(connected)
         }
     }
 
     private fun launchReset() {
-        calibrationJob?.cancel()
-        calibrationController.reset()
+        val previous = calibrationJob
+        calibrationJob = viewModelScope.launch {
+            previous?.cancelAndJoin()
+            deviceSyncGateway.cancelCalibrationCapture()
+            calibrationController.reset()
+        }
     }
 
     private fun launchNavigateBack() {
