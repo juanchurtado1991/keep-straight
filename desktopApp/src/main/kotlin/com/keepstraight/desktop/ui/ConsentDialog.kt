@@ -1,5 +1,6 @@
 package com.keepstraight.desktop.ui
 
+import com.keepstraight.desktop.ui.i18n.DesktopStrings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,14 +16,14 @@ fun ConsentDialog(
     onDecline: () -> Unit,
 ) {
     DesktopPage {
-        Text("KeepStraight", style = MaterialTheme.typography.headlineLarge)
+        Text(DesktopStrings.appName(), style = MaterialTheme.typography.headlineLarge)
         DesktopCard {
             Text(
-                "Camera is used only for live posture. Frames are not saved.",
+                DesktopStrings.consentCameraBody(),
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                "Pose runs 100% offline on this computer. A privacy LED may stay on while the camera is open.",
+                DesktopStrings.consentOfflineBody(),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -31,12 +32,12 @@ fun ConsentDialog(
                     onClick = onAccept,
                     colors = desktopPrimaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("Accept") }
+                ) { Text(DesktopStrings.actionAccept()) }
                 OutlinedButton(
                     onClick = onDecline,
                     colors = desktopSecondaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("Quit") }
+                ) { Text(DesktopStrings.actionQuit()) }
             }
         }
     }

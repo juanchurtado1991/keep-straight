@@ -1,5 +1,7 @@
 package com.keepstraight.desktop.ui
 
+import com.keepstraight.desktop.ui.i18n.DesktopStrings
+import com.keepstraight.desktop.ui.i18n.StatusCopyResolver
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.keepstraight.desktop.DesktopSessionController
+import com.keepstraight.desktop.ui.home.desktopActionLabel
 import com.keepstraight.shared.domain.CalibrationPhase
 import com.keepstraight.shared.presentation.DesktopIssue
 import com.keepstraight.shared.presentation.DesktopStatusAction
@@ -60,7 +63,7 @@ fun CalibrationScreen(
         if (bitmap != null) {
             Image(
                 bitmap = bitmap,
-                contentDescription = "Camera preview",
+                contentDescription = DesktopStrings.calibrationPreviewCd(),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -73,7 +76,7 @@ fun CalibrationScreen(
                 CircularProgressIndicator(color = Color.White)
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    "Starting camera…",
+                    DesktopStrings.calibrationStartingCamera(),
                     color = Color.White,
                     style = MaterialTheme.typography.bodyLarge,
                 )
@@ -112,13 +115,13 @@ fun CalibrationScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Calibrate posture",
+                DesktopStrings.calibrationTitle(),
                 color = Color.White,
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.SemiBold,
             )
             TextButton(onClick = onClose) {
-                Text("Close", color = Color.White)
+                Text(DesktopStrings.actionClose(), color = Color.White)
             }
         }
 
@@ -143,7 +146,7 @@ fun CalibrationScreen(
                     phase = ui.calibrationPhase,
                     hasErect = ui.hasErectCapture,
                     issue = ui.issue,
-                    fallback = status.body,
+                    fallback = StatusCopyResolver.presentationBody(status),
                 ),
                 color = Color.White.copy(alpha = 0.9f),
                 style = MaterialTheme.typography.bodyLarge,
@@ -158,7 +161,7 @@ fun CalibrationScreen(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        ui.statusMessage.ifBlank { "Hold still…" },
+                        StatusCopyResolver.text(ui.statusKey, *ui.statusArgs.toTypedArray()),
                         color = Color.White,
                     )
                 }
@@ -168,7 +171,7 @@ fun CalibrationScreen(
                 when {
                     capturing -> {
                         OutlinedButton(onClick = controller::cancelCalibration) {
-                            Text("Cancel")
+                            Text(DesktopStrings.actionCancel())
                         }
                     }
                     // Mid dual-calibration: erect just captured (recalibrate or first run).
@@ -181,34 +184,33 @@ fun CalibrationScreen(
                         Button(
                             onClick = controller::beginSlumpCalibration,
                             enabled = ui.modelReady,
-                        ) { Text("Capture slumped pose") }
+                        ) { Text(DesktopStrings.actionCaptureSlumpedPose()) }
                         OutlinedButton(
                             onClick = controller::beginErectCalibration,
                             enabled = ui.modelReady,
-                        ) { Text("Redo erect") }
+                        ) { Text(DesktopStrings.actionRedoErect()) }
                     }
                     ui.hasCalibration &&
                         ui.calibrationPhase == CalibrationPhase.COMPLETE &&
                         ui.issue == null -> {
-                        Button(onClick = onClose) { Text("Done") }
+                        Button(onClick = onClose) { Text(DesktopStrings.actionDone()) }
                         OutlinedButton(onClick = controller::beginErectCalibration) {
-                            Text("Recalibrate both")
+                            Text(DesktopStrings.actionRecalibrateBoth())
                         }
                     }
                     else -> {
                         Button(
                             onClick = controller::beginErectCalibration,
                             enabled = ui.modelReady,
-                        ) { Text("Capture erect pose") }
+                        ) { Text(DesktopStrings.actionCaptureErectPose()) }
                         if (ui.issue is DesktopIssue.CalibrationPosesTooSimilar ||
                             ui.issue is DesktopIssue.CalibrationNoPose
                         ) {
-                            // Offer slumped retry only if erect samples are still around.
                             if (ui.hasErectCapture) {
                                 Button(
                                     onClick = controller::beginSlumpCalibration,
                                     enabled = ui.modelReady,
-                                ) { Text("Retry slumped pose") }
+                                ) { Text(DesktopStrings.actionRetrySlumpedPose()) }
                             }
                         }
                     }
@@ -219,12 +221,7 @@ fun CalibrationScreen(
                         action == DesktopStatusAction.REFRESH_CAMERAS
                     ) {
                         OutlinedButton(onClick = { controller.handleStatusAction(action) }) {
-                            Text(
-                                when (action) {
-                                    DesktopStatusAction.RETRY_CAMERA -> "Retry camera"
-                                    else -> "Refresh cameras"
-                                },
-                            )
+                            Text(desktopActionLabel(action))
                         }
                     }
                 }
@@ -233,25 +230,26 @@ fun CalibrationScreen(
     }
 }
 
+@Composable
 private fun calibrationTitle(
     phase: CalibrationPhase,
     hasErect: Boolean,
     hasCalibration: Boolean,
     issue: DesktopIssue?,
 ): String = when {
-    issue is DesktopIssue.Camera -> "Camera problem"
-    issue is DesktopIssue.ModelMissing -> "Pose model missing"
-    issue is DesktopIssue.CalibrationPosesTooSimilar -> "Poses too similar"
-    issue is DesktopIssue.CalibrationNoPose -> "No pose detected"
-    issue is DesktopIssue.CalibrationNeedsErectFirst -> "Calibrate erect first"
-    phase == CalibrationPhase.CAPTURE_ERECT -> "Hold good posture"
-    phase == CalibrationPhase.CAPTURE_SLUMP -> "Hold your slouch"
-    // After erect (incl. mid-recalibrate) — before "complete", which stays true until both poses save.
-    hasErect && phase != CalibrationPhase.COMPLETE -> "Step 2 — Slumped posture"
-    hasCalibration && phase == CalibrationPhase.COMPLETE -> "Calibration complete"
-    else -> "Step 1 — Erect posture"
+    issue is DesktopIssue.Camera -> DesktopStrings.calibrationIssueCamera()
+    issue is DesktopIssue.ModelMissing -> DesktopStrings.calibrationIssueModelMissing()
+    issue is DesktopIssue.CalibrationPosesTooSimilar -> DesktopStrings.calibrationIssuePosesSimilar()
+    issue is DesktopIssue.CalibrationNoPose -> DesktopStrings.calibrationIssueNoPose()
+    issue is DesktopIssue.CalibrationNeedsErectFirst -> DesktopStrings.calibrationIssueNeedsErect()
+    phase == CalibrationPhase.CAPTURE_ERECT -> DesktopStrings.calibrationPhaseHoldGood()
+    phase == CalibrationPhase.CAPTURE_SLUMP -> DesktopStrings.calibrationPhaseHoldSlouch()
+    hasErect && phase != CalibrationPhase.COMPLETE -> DesktopStrings.calibrationStep2Slumped()
+    hasCalibration && phase == CalibrationPhase.COMPLETE -> DesktopStrings.calibrationComplete()
+    else -> DesktopStrings.calibrationStep1Erect()
 }
 
+@Composable
 private fun calibrationBody(
     phase: CalibrationPhase,
     hasErect: Boolean,
@@ -260,11 +258,11 @@ private fun calibrationBody(
 ): String = when {
     issue != null && issue !is DesktopIssue.TooDarkOrLowConfidence -> fallback
     phase == CalibrationPhase.CAPTURE_ERECT ->
-        "Sit upright facing the camera. Stay still for a couple of seconds."
+        DesktopStrings.calibrationBodyCaptureErect()
     phase == CalibrationPhase.CAPTURE_SLUMP ->
-        "Round your shoulders / lean forward like you usually slouch. Stay still."
+        DesktopStrings.calibrationBodyCaptureSlump()
     hasErect && phase != CalibrationPhase.COMPLETE ->
-        "Change to your usual slouch, then tap Capture slumped pose."
+        DesktopStrings.calibrationBodyAfterErect()
     else ->
-        "Frames are not saved. Face the camera with good light."
+        DesktopStrings.calibrationBodyDefault()
 }
