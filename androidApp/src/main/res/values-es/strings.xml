@@ -185,6 +185,8 @@
     <string name="desktop_qr_pairing">Emparejando con el escritorio…</string>
     <string name="desktop_qr_success">Emparejado con el escritorio</string>
     <string name="desktop_qr_failed">No se pudo emparejar. Inténtalo de nuevo.</string>
+    <string name="desktop_qr_invalid">Ese QR no es de KeepStraight. Escanea el código de tu computadora.</string>
+    <string name="phone_pair_update_app">Actualiza KeepStraight en tu teléfono e inténtalo de nuevo.</string>
     <string name="phone_pair_no_wifi">No hay dirección Wi‑Fi en este teléfono. Únete a la misma red que tu computadora.</string>
     <string name="phone_pair_desktop_unreachable">No se pudo contactar al escritorio. ¿Misma Wi‑Fi? ¿QR aún abierto?</string>
     <string name="phone_pair_desktop_rejected">El escritorio rechazó el emparejamiento (%1$s)</string>

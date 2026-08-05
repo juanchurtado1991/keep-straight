@@ -1,13 +1,12 @@
 package com.keepstraight.desktop.bridge
 
+import com.keepstraight.shared.bridge.BridgeProtocolError
 import com.keepstraight.shared.bridge.DesktopLanJson
 import com.keepstraight.shared.bridge.DesktopLanProtocol
 import com.keepstraight.shared.bridge.DesktopPairOffer
 import com.keepstraight.shared.bridge.DesktopPairingQr
 import com.keepstraight.shared.bridge.PhoneHelloRequest
 import com.keepstraight.shared.bridge.PhoneHelloResponse
-import com.keepstraight.desktop.presentation.DesktopMessageKey
-import com.keepstraight.desktop.ui.i18n.DesktopMessageJvm
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.cio.CIO
@@ -64,7 +63,7 @@ class DesktopPairAssistServer(
                             DesktopLanJson.phoneHelloResponseToJson(
                                 PhoneHelloResponse(
                                     ok = false,
-                                    message = DesktopMessageJvm.text(DesktopMessageKey.PAIR_ASSIST_INVALID_QR),
+                                    errorCode = BridgeProtocolError.INVALID_QR,
                                 ),
                             ),
                             ContentType.Application.Json,
@@ -77,7 +76,7 @@ class DesktopPairAssistServer(
                             DesktopLanJson.phoneHelloResponseToJson(
                                 PhoneHelloResponse(
                                     ok = false,
-                                    message = DesktopMessageJvm.text(DesktopMessageKey.PAIR_ASSIST_UPDATE_APP),
+                                    errorCode = BridgeProtocolError.UPDATE_APP,
                                 ),
                             ),
                             ContentType.Application.Json,

@@ -5,11 +5,14 @@ import com.keepstraight.desktop.CalibrationStore
 import com.keepstraight.desktop.bridge.DesktopPairAssistServer
 import com.keepstraight.desktop.bridge.JvmDesktopBridgeClient
 import com.keepstraight.desktop.ui.QrCodeBitmap
+import com.keepstraight.desktop.bridge.BridgeClientException
+import com.keepstraight.desktop.bridge.isUnauthorized
 import com.keepstraight.desktop.presentation.BridgeErrorMapper
 import com.keepstraight.desktop.presentation.DesktopMessageKey
 import com.keepstraight.desktop.presentation.DesktopPrefsKeys
 import com.keepstraight.desktop.presentation.UserMessage
 import com.keepstraight.desktop.ui.i18n.DesktopMessageJvm
+import com.keepstraight.shared.bridge.BridgeProtocolError
 import com.keepstraight.shared.bridge.DesktopLanProtocol
 import com.keepstraight.shared.bridge.DesktopPairingQr
 import com.keepstraight.shared.bridge.DesktopSlumpEvent
@@ -206,8 +209,7 @@ class BridgeStore(
             ),
         )
         result.onFailure { err ->
-            val unauthorized = err.message?.contains("401") == true ||
-                err.message?.contains("unauthorized", ignoreCase = true) == true
+            val unauthorized = (err as? BridgeClientException)?.isUnauthorized() == true
             _bridgeState.value = if (unauthorized) {
                 BridgeConnectionState.FAILED
             } else {
@@ -249,6 +251,7 @@ class BridgeStore(
 
     private suspend fun handlePhoneHello(hello: PhoneHelloRequest): PhoneHelloResponse = pairingMutex.withLock {
         var lastError: UserMessage = UserMessage(DesktopMessageKey.BRIDGE_PAIRING_FAILED)
+        var lastProtocolError = BridgeProtocolError.PAIRING_FAILED
         for (host in hello.phoneHosts) {
             val result = bridge.pair(host, hello.phonePort, hello.code)
             if (result.isSuccess) {
@@ -262,20 +265,19 @@ class BridgeStore(
                     delay(150)
                     cancelPairQr()
                 }
-                return@withLock PhoneHelloResponse(
-                    ok = true,
-                    message = DesktopMessageJvm.text(DesktopMessageKey.BRIDGE_PAIRED_PROTOCOL),
-                )
+                return@withLock PhoneHelloResponse(ok = true)
             }
             lastError = bridgeFailureMessage(result.exceptionOrNull())
+            lastProtocolError = (result.exceptionOrNull() as? BridgeClientException)?.protocolError
+                ?: BridgeProtocolError.PAIRING_FAILED
         }
         session.setIssue(
-            DesktopIssue.BridgePairFailed(lastError.override.orEmpty()),
+            DesktopIssue.BridgePairFailed(userMessageText(lastError)),
         )
         _pairMessage.value = lastError
         return@withLock PhoneHelloResponse(
             ok = false,
-            message = userMessageText(lastError),
+            errorCode = lastProtocolError,
         )
     }
 
@@ -299,7 +301,7 @@ class BridgeStore(
                 onFailure = { err ->
                     _bridgeState.value = BridgeConnectionState.FAILED
                     val message = bridgeFailureMessage(err)
-                    session.setIssue(DesktopIssue.BridgePairFailed(message.override.orEmpty()))
+                    session.setIssue(DesktopIssue.BridgePairFailed(userMessageText(message)))
                     onResult(message)
                 },
             )
@@ -378,8 +380,7 @@ class BridgeStore(
                 _bridgeState.value = BridgeConnectionState.PAIRED
             }
         }.onFailure { err ->
-            val unauthorized = err.message?.contains("401") == true ||
-                err.message?.contains("unauthorized", ignoreCase = true) == true
+            val unauthorized = (err as? BridgeClientException)?.isUnauthorized() == true
             if (unauthorized) {
                 _bridgeState.value = BridgeConnectionState.FAILED
                 session.setIssue(DesktopIssue.BridgeUnauthorized)

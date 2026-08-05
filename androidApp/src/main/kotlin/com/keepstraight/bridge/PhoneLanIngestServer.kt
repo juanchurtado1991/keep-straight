@@ -5,6 +5,7 @@ import android.util.Log
 import com.keepstraight.R
 import com.keepstraight.data.PostureHistoryRepository
 import com.keepstraight.data.UserPreferencesRepository
+import com.keepstraight.shared.bridge.BridgeProtocolError
 import com.keepstraight.shared.bridge.DesktopLanJson
 import com.keepstraight.shared.bridge.DesktopLanProtocol
 import com.keepstraight.shared.bridge.DesktopPairResponse
@@ -110,16 +111,16 @@ class PhoneLanIngestServer(
                     val expected = _pairingCode.value
                     val now = System.currentTimeMillis()
                     if (req == null || expected == null) {
-                        call.respondPairFailure(context.getString(R.string.lan_pair_invalid_code))
+                        call.respondPairFailure(BridgeProtocolError.INVALID_CODE)
                         return@post
                     }
                     if (now > pairingCodeExpiresAtMs) {
                         _pairingCode.value = null
-                        call.respondPairFailure(context.getString(R.string.lan_pair_code_expired))
+                        call.respondPairFailure(BridgeProtocolError.CODE_EXPIRED)
                         return@post
                     }
                     if (!recordPairAttempt(now)) {
-                        call.respondPairFailure(context.getString(R.string.lan_pair_too_many_attempts))
+                        call.respondPairFailure(BridgeProtocolError.TOO_MANY_ATTEMPTS)
                         return@post
                     }
                     if (req.code != expected) {
@@ -127,7 +128,7 @@ class PhoneLanIngestServer(
                             DesktopLanJson.pairResponseToJson(
                                 DesktopPairResponse(
                                     ok = false,
-                                    message = context.getString(R.string.lan_pair_invalid_code),
+                                    errorCode = BridgeProtocolError.INVALID_CODE,
                                 ),
                             ),
                             ContentType.Application.Json,
@@ -140,7 +141,7 @@ class PhoneLanIngestServer(
                             DesktopLanJson.pairResponseToJson(
                                 DesktopPairResponse(
                                     ok = false,
-                                    message = context.getString(R.string.lan_pair_update_app),
+                                    errorCode = BridgeProtocolError.UPDATE_APP,
                                 ),
                             ),
                             ContentType.Application.Json,
@@ -161,7 +162,6 @@ class PhoneLanIngestServer(
                             DesktopPairResponse(
                                 ok = true,
                                 token = token,
-                                message = context.getString(R.string.lan_pair_success),
                             ),
                         ),
                         ContentType.Application.Json,
@@ -247,9 +247,9 @@ class PhoneLanIngestServer(
         }
     }
 
-    private suspend fun ApplicationCall.respondPairFailure(message: String) {
+    private suspend fun ApplicationCall.respondPairFailure(error: BridgeProtocolError) {
         respondText(
-            DesktopLanJson.pairResponseToJson(DesktopPairResponse(ok = false, message = message)),
+            DesktopLanJson.pairResponseToJson(DesktopPairResponse(ok = false, errorCode = error)),
             ContentType.Application.Json,
             HttpStatusCode.Unauthorized,
         )

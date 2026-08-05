@@ -5,9 +5,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.keepstraight.KeepStraightApp
 import com.keepstraight.bridge.AndroidDesktopPairingGateway
+import com.keepstraight.bridge.PhonePairException
+import com.keepstraight.bridge.PhonePairError
+import com.keepstraight.bridge.phonePairErrorFromProtocol
 import com.keepstraight.presentation.pairing.model.DesktopPairingPhase
 import com.keepstraight.presentation.pairing.model.DesktopPairingUiState
-import com.keepstraight.bridge.PhonePairException
+import com.keepstraight.shared.application.phone.PairDesktopFailure
 import com.keepstraight.shared.application.phone.PairDesktopUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,17 +43,20 @@ class DesktopPairingViewModel(
                 },
                 onFailure = { err ->
                     handled.set(false)
-                    val phase = if (err is IllegalArgumentException) {
-                        DesktopPairingPhase.INVALID_QR
-                    } else {
-                        DesktopPairingPhase.FAILED
+                    val pairError = when (err) {
+                        is PairDesktopFailure -> phonePairErrorFromProtocol(err.error)
+                        is PhonePairException -> err.error
+                        else -> phonePairErrorFromProtocol(null)
                     }
-                    val pairError = (err as? PhonePairException)?.error
+                    val phase = when (pairError) {
+                        PhonePairError.INVALID_QR -> DesktopPairingPhase.INVALID_QR
+                        else -> DesktopPairingPhase.FAILED
+                    }
                     _state.update {
                         it.copy(
                             phase = phase,
                             error = pairError,
-                            errorDetail = (err as? PhonePairException)?.message,
+                            errorDetail = null,
                         )
                     }
                 },

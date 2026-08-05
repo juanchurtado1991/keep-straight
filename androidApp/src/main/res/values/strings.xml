@@ -185,6 +185,8 @@
     <string name="desktop_qr_pairing">Pairing with desktop…</string>
     <string name="desktop_qr_success">Paired with desktop</string>
     <string name="desktop_qr_failed">Couldn’t pair. Try again.</string>
+    <string name="desktop_qr_invalid">That QR isn’t from KeepStraight. Scan the code on your computer.</string>
+    <string name="phone_pair_update_app">Update KeepStraight on your phone and try again.</string>
     <string name="phone_pair_no_wifi">No Wi‑Fi address on this phone. Join the same network as your computer.</string>
     <string name="phone_pair_desktop_unreachable">Could not reach desktop. Same Wi‑Fi? QR still open?</string>
     <string name="phone_pair_desktop_rejected">Desktop rejected pairing (%1$s)</string>

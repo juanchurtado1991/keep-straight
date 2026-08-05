@@ -58,13 +58,16 @@ fun DesktopQrScanScreen(
         DesktopPairingPhase.FAILED -> when (pairingState.error) {
             PhonePairError.NO_WIFI -> stringResource(R.string.phone_pair_no_wifi)
             PhonePairError.DESKTOP_UNREACHABLE -> stringResource(R.string.phone_pair_desktop_unreachable)
-            PhonePairError.DESKTOP_REJECTED -> stringResource(
-                R.string.phone_pair_desktop_rejected,
-                pairingState.errorDetail.orEmpty(),
-            )
-            null -> stringResource(R.string.desktop_qr_failed)
+            PhonePairError.INVALID_QR -> stringResource(R.string.desktop_qr_invalid)
+            PhonePairError.UPDATE_APP -> stringResource(R.string.phone_pair_update_app)
+            PhonePairError.INVALID_CODE -> stringResource(R.string.lan_pair_invalid_code)
+            PhonePairError.CODE_EXPIRED -> stringResource(R.string.lan_pair_code_expired)
+            PhonePairError.TOO_MANY_ATTEMPTS -> stringResource(R.string.lan_pair_too_many_attempts)
+            PhonePairError.DESKTOP_REJECTED,
+            null,
+            -> stringResource(R.string.desktop_qr_failed)
         }
-        DesktopPairingPhase.INVALID_QR -> stringResource(R.string.desktop_qr_failed)
+        DesktopPairingPhase.INVALID_QR -> stringResource(R.string.desktop_qr_invalid)
         DesktopPairingPhase.IDLE -> null
     }
 

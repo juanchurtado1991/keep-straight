@@ -2,6 +2,7 @@ package com.keepstraight.desktop.bridge
 
 import com.keepstraight.desktop.presentation.DesktopMessageKey
 import com.keepstraight.desktop.presentation.DesktopPrefsKeys
+import com.keepstraight.shared.bridge.BridgeProtocolError
 import com.keepstraight.shared.bridge.DesktopBridgeClient
 import com.keepstraight.shared.bridge.DesktopLanJson
 import com.keepstraight.shared.bridge.DesktopLanProtocol
@@ -43,19 +44,24 @@ class JvmDesktopBridgeClient(
                 val parsed = DesktopLanJson.parsePairResponse(body)
                 throw BridgeClientException(
                     DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
-                    parsed?.message?.ifBlank { null } ?: response.status.value.toString(),
+                    parsed?.errorCode ?: BridgeProtocolError.PAIRING_FAILED,
                 )
             }
             val parsed = DesktopLanJson.parsePairResponse(body)
-                ?: throw BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED, "invalid_response")
+                ?: throw BridgeClientException(
+                    DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
+                    BridgeProtocolError.INVALID_RESPONSE,
+                )
             if (!parsed.ok) {
                 throw BridgeClientException(
                     DesktopMessageKey.BRIDGE_CLIENT_PAIR_REJECTED,
-                    parsed.message.ifBlank { null },
+                    parsed.errorCode ?: BridgeProtocolError.PAIRING_FAILED,
                 )
             }
             if (parsed.token.isBlank()) {
-                throw BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_MISSING_TOKEN)
+                throw BridgeClientException(
+                    DesktopMessageKey.BRIDGE_CLIENT_MISSING_TOKEN,
+                )
             }
             this.host = host
             this.port = port
@@ -80,12 +86,15 @@ class JvmDesktopBridgeClient(
                 setBody(DesktopLanJson.eventToJson(event))
             }
             if (response.status.value == 401) {
-                throw BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_UNAUTHORIZED)
+                throw BridgeClientException(
+                    DesktopMessageKey.BRIDGE_CLIENT_UNAUTHORIZED,
+                    BridgeProtocolError.UNAUTHORIZED,
+                )
             }
             if (!response.status.isSuccess()) {
                 throw BridgeClientException(
                     DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
-                    response.status.value.toString(),
+                    BridgeProtocolError.PAIRING_FAILED,
                 )
             }
         }
@@ -102,16 +111,22 @@ class JvmDesktopBridgeClient(
                 header(DesktopLanProtocol.HEADER_TOKEN, t)
             }
             if (response.status.value == 401) {
-                throw BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_UNAUTHORIZED)
+                throw BridgeClientException(
+                    DesktopMessageKey.BRIDGE_CLIENT_UNAUTHORIZED,
+                    BridgeProtocolError.UNAUTHORIZED,
+                )
             }
             if (!response.status.isSuccess()) {
                 throw BridgeClientException(
                     DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
-                    response.status.value.toString(),
+                    BridgeProtocolError.PAIRING_FAILED,
                 )
             }
             DesktopLanJson.parseSettings(response.bodyAsText())
-                ?: throw BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED, "invalid_settings")
+                ?: throw BridgeClientException(
+                    DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
+                    BridgeProtocolError.INVALID_SETTINGS,
+                )
         }
     }
 
@@ -122,7 +137,7 @@ class JvmDesktopBridgeClient(
             if (!response.status.isSuccess()) {
                 throw BridgeClientException(
                     DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
-                    response.status.value.toString(),
+                    BridgeProtocolError.PAIRING_FAILED,
                 )
             }
         }
