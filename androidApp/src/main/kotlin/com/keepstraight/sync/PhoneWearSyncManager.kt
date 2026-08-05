@@ -1,7 +1,9 @@
 package com.keepstraight.sync
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
+import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
@@ -187,6 +189,7 @@ class PhoneWearSyncManager(
     }
 
     override suspend fun clearPairedDevice() {
+        runCatching { sendControl(WatchControlCommand.STOP_ALGORITHM) }
         userPreferencesRepository.setPairedWatchId(watchId = null, pairedAtMs = null)
         _isConnected.value = false
     }
@@ -358,6 +361,7 @@ class PhoneWearSyncManager(
             calibrationDeferred?.cancel()
             calibrationDeferred = null
         }
+        clearCalibrateRequestDataItem()
     }
 
     override suspend fun awaitCalibrationResult(timeoutMs: Long): CalibrationCaptureResult? {
@@ -436,11 +440,24 @@ class PhoneWearSyncManager(
                 if (!deferred.isActive) return@launch
                 deferred.complete(result)
             }
+            clearCalibrateRequestDataItem()
         }
     }
 
     @Volatile
     private var lastCalibrationResultKey: String? = null
+
+    private suspend fun clearCalibrateRequestDataItem() {
+        withContext(Dispatchers.IO) {
+            awaitWear {
+                val uri = Uri.Builder()
+                    .scheme(PutDataRequest.WEAR_URI_SCHEME)
+                    .path(SyncPaths.CALIBRATE_REQUEST)
+                    .build()
+                dataClient.deleteDataItems(uri).await()
+            }
+        }
+    }
 
     private suspend fun sendToPairedWatch(path: String, payload: ByteArray): Result<Unit> =
         withContext(Dispatchers.IO) {

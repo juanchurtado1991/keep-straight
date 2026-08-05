@@ -9,6 +9,7 @@ import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
@@ -19,7 +20,9 @@ import com.keepstraight.shared.model.WatchControlCommand
 import com.keepstraight.shared.model.WatchControlMessage
 import com.keepstraight.shared.presentation.MonitoringState
 import com.keepstraight.shared.sync.SyncCapabilities
+import com.keepstraight.shared.sync.CalibrationResultCodec
 import com.keepstraight.shared.sync.SyncPaths
+import com.keepstraight.shared.sync.SyncTiming
 import com.keepstraight.wear.KeepStraightWearApp
 import com.keepstraight.wear.MainActivity
 import com.keepstraight.wear.alerts.AlertDispatcher
@@ -121,10 +124,30 @@ class WearInboundHandler(
                 if (event.type != DataEvent.TYPE_CHANGED) continue
                 val path = event.dataItem.uri.path ?: continue
                 if (path != SyncPaths.CALIBRATE_REQUEST) continue
+                val sentAt = runCatching {
+                    DataMapItem.fromDataItem(event.dataItem).dataMap
+                        .getLong(CalibrationResultCodec.KEY_SENT_AT)
+                }.getOrDefault(0L)
+                val now = System.currentTimeMillis()
+                if (sentAt > 0L && now - sentAt > SyncTiming.CALIBRATE_REQUEST_STALE_MS) {
+                    Log.i(TAG, "Ignoring stale calibrate-request sentAt=$sentAt")
+                    deleteCalibrateRequestItem(event.dataItem.uri)
+                    continue
+                }
                 val phoneNodeId = event.dataItem.uri.host.orEmpty()
                 Log.i(TAG, "DataItem calibrate-request from host=$phoneNodeId")
                 handleCalibrateRequest(phoneNodeId)
+                deleteCalibrateRequestItem(event.dataItem.uri)
             }
+        }
+    }
+
+    private fun deleteCalibrateRequestItem(uri: Uri) {
+        scope.launch {
+            runCatching {
+                Wearable.getDataClient(app).deleteDataItems(uri).await()
+                Log.i(TAG, "Deleted calibrate-request DataItem")
+            }.onFailure { Log.w(TAG, "Could not delete calibrate-request DataItem", it) }
         }
     }
 
