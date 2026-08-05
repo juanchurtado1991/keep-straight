@@ -48,7 +48,8 @@ import com.keepstraight.ui.theme.phoneButtonShape
 import com.keepstraight.ui.theme.phonePrimaryButtonColors
 import com.keepstraight.ui.theme.phoneSecondaryButtonColors
 import com.keepstraight.util.SystemIntentsHelper
-import com.keepstraight.viewmodel.MainViewModel
+import com.keepstraight.presentation.onboarding.OnboardingViewModel
+import com.keepstraight.presentation.pairing.WatchPairingViewModel
 
 const val STEP_WELCOME = 0
 const val STEP_PAIR = 1
@@ -61,7 +62,8 @@ const val STEP_SENSITIVITY = 6
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(
-    viewModel: MainViewModel,
+    pairingViewModel: WatchPairingViewModel,
+    onboardingViewModel: OnboardingViewModel,
     onOpenNotificationSettings: () -> Unit,
     onOpenBatterySettings: () -> Unit,
     onOpenBatteryFallback: () -> Unit,
@@ -73,10 +75,10 @@ fun OnboardingScreen(
 ) {
     var step by remember { mutableIntStateOf(initialStep) }
     var batteryAcknowledged by remember { mutableStateOf(false) }
-    val discoverState by viewModel.discoverState.collectAsState()
+    val discoverState by pairingViewModel.discoverState.collectAsState()
     val availableNodes = (discoverState as? DiscoverUiState.Ready)?.nodes.orEmpty()
-    val pairedWatchId by viewModel.pairedWatchId.collectAsState()
-    val sensitivity by viewModel.sensitivity.collectAsState()
+    val pairedWatchId by pairingViewModel.pairedWatchId.collectAsState()
+    val sensitivity by onboardingViewModel.sensitivity.collectAsState()
     val context = LocalContext.current
     val wearCompanionAvailable = remember {
         SystemIntentsHelper.isWearCompanionInstalled(context)
@@ -86,12 +88,12 @@ fun OnboardingScreen(
 
     LaunchedEffect(step) {
         if (step == STEP_PAIR) {
-            viewModel.refreshWatchNodes()
+            pairingViewModel.refreshWatchNodes()
         }
     }
 
     LaunchedEffect(Unit) {
-        if (!viewModel.isBatteryOptimizationEnabled()) {
+        if (!onboardingViewModel.isBatteryOptimizationEnabled()) {
             batteryAcknowledged = true
         }
     }
@@ -129,7 +131,7 @@ fun OnboardingScreen(
                         )
                         PhoneCard {
                             OutlinedButton(
-                                onClick = { viewModel.refreshWatchNodes() },
+                                onClick = { pairingViewModel.refreshWatchNodes() },
                                 enabled = !discoverLoading,
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = phoneButtonShape(),
@@ -203,7 +205,7 @@ fun OnboardingScreen(
                                         WatchNodeRow(
                                             node = node,
                                             selected = node.id == pairedWatchId,
-                                            onSelect = { viewModel.pairWatch(node.id) },
+                                            onSelect = { pairingViewModel.pairWatch(node.id) },
                                         )
                                     }
                                 }
@@ -298,7 +300,7 @@ fun OnboardingScreen(
                                 SensitivityRow(
                                     level = level,
                                     selected = sensitivity == level,
-                                    onSelect = { viewModel.setSensitivity(level) },
+                                    onSelect = { onboardingViewModel.setSensitivity(level) },
                                 )
                             }
                         }
@@ -333,7 +335,7 @@ fun OnboardingScreen(
                 Spacer(modifier = Modifier.weight(1f))
                 val canProceed = when (step) {
                     STEP_PAIR -> pairedWatchId != null
-                    STEP_BATTERY -> batteryAcknowledged || !viewModel.isBatteryOptimizationEnabled()
+                    STEP_BATTERY -> batteryAcknowledged || !onboardingViewModel.isBatteryOptimizationEnabled()
                     else -> true
                 }
                 if (step == STEP_PAIR && !pairOnly && pairedWatchId == null) {
@@ -350,7 +352,7 @@ fun OnboardingScreen(
                         when {
                             pairOnly && step == STEP_PAIR -> onComplete()
                             step == STEP_SENSITIVITY -> {
-                                viewModel.completeOnboarding()
+                                onboardingViewModel.completeOnboarding()
                                 onComplete()
                             }
                             else -> step += 1
