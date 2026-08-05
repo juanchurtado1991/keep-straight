@@ -112,7 +112,10 @@ data class DesktopPhoneSettings(
     val protocolVersion: Int = DesktopLanProtocol.VERSION,
 )
 
-/** Minimal JSON helpers (no kotlinx.serialization required). */
+/**
+ * Plain JSON encode/decode for the desktop↔phone LAN HTTP bridge.
+ * Phone↔watch payloads use Ghost ([com.ghost.serialization.Ghost]), not this format.
+ */
 object DesktopLanJson {
     fun eventToJson(event: DesktopSlumpEvent): String =
         """{"type":"${event.type.name}","slumpScore":${event.slumpScore},"presence":"${event.presence}","timestampMs":${event.timestampMs},"protocolVersion":${event.protocolVersion},"seatedDeltaSec":${event.seatedDeltaSec},"goodPostureDeltaSec":${event.goodPostureDeltaSec}}"""
