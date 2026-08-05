@@ -12,6 +12,7 @@ interface DeviceSyncGateway {
     val isConnected: Flow<Boolean>
     val calibrationResult: SharedFlow<CalibrationCaptureResult>
 
+    suspend fun refreshConnectionStatus(): Boolean
     suspend fun discoverPairedDevices(): List<PairedDevice>
     suspend fun pairDevice(deviceId: String)
     suspend fun clearPairedDevice()

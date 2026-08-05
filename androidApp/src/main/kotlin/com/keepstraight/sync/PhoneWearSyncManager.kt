@@ -156,7 +156,7 @@ class PhoneWearSyncManager(
     }
 
     /** Immediate reachability check (does not wait for the 5s poll). */
-    suspend fun refreshConnectionStatus(): Boolean = withContext(Dispatchers.IO) {
+    override suspend fun refreshConnectionStatus(): Boolean = withContext(Dispatchers.IO) {
         val watchId = userPreferencesRepository.pairedWatchId.first()
         if (watchId == null) {
             _isConnected.value = false
