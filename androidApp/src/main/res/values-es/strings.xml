@@ -218,6 +218,7 @@
     <string name="lan_pair_update_app">Actualiza KeepStraight</string>
     <string name="lan_http_unauthorized">no autorizado</string>
     <string name="lan_http_bad_request">solicitud incorrecta</string>
+    <string name="lan_http_watch_unreachable">reloj no alcanzable</string>
 
     
     <string name="action_back">Atrás</string>

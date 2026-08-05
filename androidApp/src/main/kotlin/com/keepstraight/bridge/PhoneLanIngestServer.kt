@@ -192,7 +192,14 @@ class PhoneLanIngestServer(
                         )
                         return@post
                     }
-                    handleEvent(event)
+                    val delivered = handleEvent(event)
+                    if (!delivered) {
+                        call.respondText(
+                            context.getString(R.string.lan_http_watch_unreachable),
+                            status = HttpStatusCode.BadGateway,
+                        )
+                        return@post
+                    }
                     call.respond(DesktopLanAckResponse())
                 }
             }
@@ -262,7 +269,8 @@ class PhoneLanIngestServer(
         )
     }
 
-    private suspend fun handleEvent(event: DesktopSlumpEvent) {
+    /** @return false when a slump alert was required but could not reach the watch. */
+    private suspend fun handleEvent(event: DesktopSlumpEvent): Boolean {
         when (event.type) {
             DesktopSlumpEventType.WORK_SAMPLE -> {
                 historyRepository.addWorkSample(
@@ -270,6 +278,7 @@ class PhoneLanIngestServer(
                     goodPostureDeltaSec = event.goodPostureDeltaSec,
                     atMs = normalizeTimestampMs(event.timestampMs),
                 )
+                return true
             }
             DesktopSlumpEventType.SLUMP_INITIAL,
             DesktopSlumpEventType.SLUMP_REPEAT,
@@ -284,7 +293,7 @@ class PhoneLanIngestServer(
                 val alertsOn = preferencesRepository.alertsEnabled.first()
                 if (!alertsOn) {
                     Log.i(TAG, "Skipping watch alert — phone Alerts toggle is off")
-                    return
+                    return true
                 }
                 val alertPrefs = preferencesRepository.alertPreferences.first()
                 if (alertPrefs.phoneNotificationEnabled) {
@@ -292,14 +301,17 @@ class PhoneLanIngestServer(
                         ?.notificationManager
                         ?.showSlumpAlert(0)
                 }
-                val sent = syncManager.sendControl(WatchControlCommand.TRIGGER_ALERT)
-                sent.onSuccess {
-                    Log.i(TAG, "Forwarded ${event.type} → watch TRIGGER_ALERT")
-                }.onFailure { err ->
-                    Log.w(TAG, "Failed to forward ${event.type} to watch: ${err.message}")
-                }
+                return syncManager.sendControl(WatchControlCommand.TRIGGER_ALERT)
+                    .also { sent ->
+                        sent.onSuccess {
+                            Log.i(TAG, "Forwarded ${event.type} → watch TRIGGER_ALERT")
+                        }.onFailure { err ->
+                            Log.w(TAG, "Failed to forward ${event.type} to watch: ${err.message}")
+                        }
+                    }
+                    .isSuccess
             }
-            else -> Unit
+            else -> return true
         }
     }
 

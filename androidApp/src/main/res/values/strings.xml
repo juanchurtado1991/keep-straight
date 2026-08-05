@@ -220,6 +220,7 @@
     <string name="lan_pair_update_app">Update KeepStraight</string>
     <string name="lan_http_unauthorized">unauthorized</string>
     <string name="lan_http_bad_request">bad request</string>
+    <string name="lan_http_watch_unreachable">watch unreachable</string>
 
     <!-- Common -->
     <string name="action_back">Back</string>
