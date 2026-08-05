@@ -25,28 +25,33 @@ class PhoneLanBridgeService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
-        val notification = buildNotification()
+        val app = application as KeepStraightApp
+        app.lanIngestServer.onPairingStateChanged = { updateNotification() }
+        app.lanIngestServer.start()
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
-            notification,
+            buildNotification(),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             } else {
                 0
             },
         )
-
-        (application as KeepStraightApp).lanIngestServer.start()
         return START_STICKY
     }
 
     override fun onDestroy() {
-        (application as? KeepStraightApp)?.lanIngestServer?.stop()
+        (application as? KeepStraightApp)?.lanIngestServer?.onPairingStateChanged = null
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun updateNotification() {
+        getSystemService(NotificationManager::class.java)
+            .notify(NOTIFICATION_ID, buildNotification())
+    }
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
@@ -99,6 +104,8 @@ class PhoneLanBridgeService : Service() {
         }
 
         fun stop(context: Context) {
+            val app = context.applicationContext as? KeepStraightApp
+            app?.lanIngestServer?.stop()
             context.applicationContext.stopService(
                 Intent(context.applicationContext, PhoneLanBridgeService::class.java),
             )
