@@ -103,7 +103,7 @@ class CalibrationController(
             preferencesRepository.setCalibration(goodP, goodR)
             preferencesRepository.setSlumpReference(slouch.basePitch, slouch.baseRoll)
             val sensitivity = preferencesRepository.sensitivity.first()
-            deviceSyncGateway.sendCalibration(
+            val syncResult = deviceSyncGateway.sendCalibration(
                 PostureCalibrationConfig(
                     basePitch = goodP,
                     baseRoll = goodR,
@@ -115,6 +115,10 @@ class CalibrationController(
                     slumpRoll = slouch.baseRoll,
                 ),
             )
+            if (syncResult.isFailure) {
+                apply(CalibrationReduceAction.PersistFailed(CalibrationError.SEND_FAILED))
+                return
+            }
             apply(CalibrationReduceAction.PersistSucceeded)
         } catch (_: Exception) {
             apply(CalibrationReduceAction.PersistFailed(CalibrationError.SAVE_FAILED))
