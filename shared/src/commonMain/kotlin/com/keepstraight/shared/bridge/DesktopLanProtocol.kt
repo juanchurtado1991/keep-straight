@@ -69,6 +69,8 @@ object DesktopPairingQr {
             if (idx <= 0) null
             else part.substring(0, idx) to part.substring(idx + 1)
         }.toMap()
+        val version = params["v"]?.toIntOrNull()
+        if (version != null && version != DesktopLanProtocol.VERSION) return null
         val hosts = params["hosts"].orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
         val nonce = params["nonce"].orEmpty()
         val port = params["port"]?.toIntOrNull() ?: DesktopLanProtocol.PAIR_ASSIST_PORT
@@ -105,6 +107,8 @@ data class DesktopSlumpEvent(
 data class DesktopLanPingResponse(
     val ok: Boolean,
     val protocolVersion: Int = DesktopLanProtocol.VERSION,
+    /** False after the phone user clears desktop pairing (desktop should unlink). */
+    val bridgeLinked: Boolean = true,
 )
 
 @GhostSerialization

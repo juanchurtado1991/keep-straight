@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -100,6 +101,12 @@ class BridgeStore(
             if (ping.isFailure) {
                 _bridgeState.value = BridgeConnectionState.DEGRADED
                 _bridgeActionMessage.value = UserMessage(DesktopMessageKey.BRIDGE_CANT_REACH)
+                _bridgeActionBusy.value = false
+                return@launch
+            }
+            if (ping.getOrDefault(true) == false) {
+                clearBridgeFromPhoneUnlink()
+                _bridgeActionMessage.value = UserMessage(DesktopMessageKey.BRIDGE_UNLINKED)
                 _bridgeActionBusy.value = false
                 return@launch
             }
@@ -193,7 +200,24 @@ class BridgeStore(
         cancelPairQr()
         stopSettingsSync()
         stopWorkSampleSync()
+        runBlocking {
+            if (bridge.isConfigured) {
+                flushWorkSample()
+            }
+        }
         bridge.close()
+    }
+
+    private fun clearBridgeFromPhoneUnlink() {
+        stopSettingsSync()
+        stopWorkSampleSync()
+        bridge.clear()
+        _bridgeHost.value = ""
+        _bridgeState.value = BridgeConnectionState.NOT_CONFIGURED
+        session.clearPhoneSettingsFlag()
+        session.clearIssue()
+        phoneAlertsEnabled = true
+        onBridgeCleared()
     }
 
     suspend fun forwardAlert(event: DesktopAlertEvent) {
@@ -371,6 +395,17 @@ class BridgeStore(
     }
 
     private suspend fun syncSettingsFromPhone() {
+        if (bridge.isConfigured) {
+            val ping = bridge.ping()
+            if (ping.getOrNull() == false) {
+                clearBridgeFromPhoneUnlink()
+                _bridgeState.value = BridgeConnectionState.FAILED
+                session.setIssue(DesktopIssue.BridgeUnauthorized)
+                stopSettingsSync()
+                stopWorkSampleSync()
+                return
+            }
+        }
         val result = bridge.fetchSettings()
         result.onSuccess { settings ->
             phoneAlertsEnabled = settings.alertsEnabled

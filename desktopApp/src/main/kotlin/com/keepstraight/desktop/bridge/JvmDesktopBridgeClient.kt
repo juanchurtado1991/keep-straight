@@ -6,6 +6,7 @@ import com.keepstraight.desktop.presentation.DesktopPrefsKeys
 import com.keepstraight.shared.bridge.BridgeProtocolError
 import com.keepstraight.shared.bridge.DesktopBridgeClient
 import com.keepstraight.shared.bridge.DesktopLanProtocol
+import com.keepstraight.shared.bridge.DesktopLanPingResponse
 import com.keepstraight.shared.bridge.DesktopPairRequest
 import com.keepstraight.shared.bridge.DesktopPairResponse
 import com.keepstraight.shared.bridge.DesktopPhoneSettings
@@ -142,7 +143,7 @@ class JvmDesktopBridgeClient(
         }
     }
 
-    suspend fun ping(): Result<Unit> {
+    suspend fun ping(): Result<Boolean> {
         val h = host ?: return Result.failure(BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_NOT_PAIRED))
         return runCatching {
             val response = client.get("http://$h:$port${DesktopLanProtocol.PATH_PING}")
@@ -152,6 +153,7 @@ class JvmDesktopBridgeClient(
                     BridgeProtocolError.PAIRING_FAILED,
                 )
             }
+            response.body<DesktopLanPingResponse>().bridgeLinked
         }
     }
 

@@ -82,13 +82,18 @@ class PhoneLanIngestServer(
     private val _localAddresses = MutableStateFlow<List<String>>(emptyList())
     val localAddresses: StateFlow<List<String>> = _localAddresses.asStateFlow()
 
+    private val _startError = MutableStateFlow<String?>(null)
+    val startError: StateFlow<String?> = _startError.asStateFlow()
+
     var onPairingStateChanged: (() -> Unit)? = null
 
-    fun start() {
+    /** @return false when the LAN port could not be bound (already in use, etc.). */
+    fun start(): Boolean {
         synchronized(serverLock) {
-            if (server != null) return
+            if (server != null) return true
             _localAddresses.value = discoverIpv4Addresses()
-            server = embeddedServer(CIO, port = DesktopLanProtocol.DEFAULT_PORT, host = "0.0.0.0") {
+            return try {
+                server = embeddedServer(CIO, port = DesktopLanProtocol.DEFAULT_PORT, host = "0.0.0.0") {
             install(ContentNegotiation) {
                 ghost()
             }
@@ -98,6 +103,7 @@ class PhoneLanIngestServer(
                         DesktopLanPingResponse(
                             ok = true,
                             protocolVersion = DesktopLanProtocol.VERSION,
+                            bridgeLinked = !authToken.isNullOrBlank(),
                         ),
                     )
                 }
@@ -152,6 +158,10 @@ class PhoneLanIngestServer(
                                 errorCode = BridgeProtocolError.UPDATE_APP,
                             ),
                         )
+                        return@post
+                    }
+                    if (!authToken.isNullOrBlank()) {
+                        call.respondPairFailure(BridgeProtocolError.PAIRED)
                         return@post
                     }
                     val token = UUID.randomUUID().toString()
@@ -225,8 +235,17 @@ class PhoneLanIngestServer(
         }.also {
             it.start(wait = false)
             _isRunning.value = true
+            _startError.value = null
             Log.i(TAG, "Desktop LAN ingest listening on ${DesktopLanProtocol.DEFAULT_PORT}")
         }
+            true
+            } catch (error: Exception) {
+                server = null
+                _isRunning.value = false
+                _startError.value = error.message
+                Log.e(TAG, "Failed to start LAN ingest on ${DesktopLanProtocol.DEFAULT_PORT}", error)
+                false
+            }
         }
     }
 
@@ -238,7 +257,8 @@ class PhoneLanIngestServer(
         scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 
-    fun generatePairingCode(): String {
+    fun generatePairingCode(): String? {
+        if (isPairedWithDesktop()) return null
         val now = System.currentTimeMillis()
         val existing = _pairingCode.value
         if (existing != null && now <= pairingCodeExpiresAtMs) {
