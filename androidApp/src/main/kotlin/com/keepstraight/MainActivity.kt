@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.androidx.compose.koinViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -47,7 +48,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission(),
     ) { /* user choice handled via settings deep link */ }
 
-    private var dashboardViewModel: DashboardViewModel? = null
+    private val dashboardViewModel: DashboardViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -133,10 +134,8 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(AppRoutes.DASHBOARD) {
-                        val dashboardVm: DashboardViewModel = koinViewModel()
-                        dashboardViewModel = dashboardVm
                         DashboardScreen(
-                            viewModel = dashboardVm,
+                            viewModel = dashboardViewModel,
                             onSettings = { navController.navigate(AppRoutes.SETTINGS) },
                             onScanDesktopQr = { navController.navigate(AppRoutes.DESKTOP_QR) },
                             onOpenBatterySettings = {
@@ -248,6 +247,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        dashboardViewModel?.refreshBatteryBanner()
+        dashboardViewModel.refreshBatteryBanner()
     }
 }
