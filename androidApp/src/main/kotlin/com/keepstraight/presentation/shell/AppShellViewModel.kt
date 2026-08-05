@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.keepstraight.KeepStraightApp
+import com.keepstraight.presentation.common.PhonePresentationConfig
 import com.keepstraight.data.local.PostureEventEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,7 +20,7 @@ class AppShellViewModel(
     private val app = application as KeepStraightApp
 
     val onboardingComplete: StateFlow<Boolean> = app.userPreferencesRepository.onboardingComplete
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), false)
 
     val eventsPaged: Flow<PagingData<PostureEventEntity>> =
         app.postureHistoryRepository.eventsPaged().cachedIn(viewModelScope)

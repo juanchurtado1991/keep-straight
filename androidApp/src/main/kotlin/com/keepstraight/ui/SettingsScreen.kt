@@ -1,35 +1,30 @@
 package com.keepstraight.ui
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.keepstraight.KeepStraightApp
 import com.keepstraight.R
+import com.keepstraight.presentation.settings.SettingsViewModel
 import com.keepstraight.ui.components.KeepStraightTopBar
+import com.keepstraight.ui.settings.SettingsLink
+import com.keepstraight.ui.settings.SettingsToggleRow
+import com.keepstraight.ui.settings.watchToggleSubtitle
 import com.keepstraight.ui.theme.PhoneCard
-import com.keepstraight.ui.theme.PhoneDimens
 import com.keepstraight.ui.theme.PhonePage
 import com.keepstraight.ui.theme.phoneButtonShape
 import com.keepstraight.ui.theme.phoneSecondaryButtonColors
-import com.keepstraight.presentation.settings.SettingsViewModel
 
 @Composable
 fun SettingsScreen(
@@ -175,67 +170,4 @@ fun SettingsScreen(
             }
         }
     }
-}
-
-@Composable
-private fun watchToggleSubtitle(
-    watchPaired: Boolean,
-    isConnected: Boolean,
-    connectedSubtitle: Int,
-): String = when {
-    !watchPaired -> stringResource(R.string.dashboard_requires_watch)
-    !isConnected -> stringResource(R.string.dashboard_applies_when_connected)
-    else -> stringResource(connectedSubtitle)
-}
-
-@Composable
-private fun SettingsToggleRow(
-    label: String,
-    subtitle: String,
-    checked: Boolean,
-    enabled: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = PhoneDimens.rowGap),
-            verticalArrangement = Arrangement.spacedBy(PhoneDimens.itemGap / 2),
-        ) {
-            Text(text = label, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled,
-            colors = SwitchDefaults.colors(
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                uncheckedThumbColor = MaterialTheme.colorScheme.surface,
-            ),
-        )
-    }
-}
-
-@Composable
-private fun SettingsLink(label: String, onClick: () -> Unit) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = PhoneDimens.itemGap),
-    )
 }

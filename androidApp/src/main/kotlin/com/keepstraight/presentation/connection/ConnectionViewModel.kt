@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.keepstraight.KeepStraightApp
+import com.keepstraight.presentation.common.PhonePresentationConfig
 import com.keepstraight.shared.application.phone.ReconnectWatchUseCase
 import com.keepstraight.shared.presentation.ReconnectError
 import com.keepstraight.shared.presentation.ReconnectUiState
@@ -27,10 +28,10 @@ class ConnectionViewModel(
     private val reconnectWatchUseCase = ReconnectWatchUseCase(app.syncManager)
 
     val pairedWatchId: StateFlow<String?> = app.userPreferencesRepository.pairedWatchId
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), null)
 
     val isConnected: StateFlow<Boolean> = app.syncManager.isConnected
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), false)
 
     private val _reconnectState = MutableStateFlow<ReconnectUiState>(ReconnectUiState.Idle)
     val reconnectState: StateFlow<ReconnectUiState> = _reconnectState.asStateFlow()
@@ -43,7 +44,7 @@ class ConnectionViewModel(
         reconnectJob = viewModelScope.launch {
             _reconnectState.value = ReconnectUiState.InProgress
             val result = try {
-                withTimeout(RECONNECT_TIMEOUT_MS) {
+                withTimeout(ConnectionConfig.RECONNECT_TIMEOUT_MS) {
                     reconnectWatchUseCase()
                 }
             } catch (error: TimeoutCancellationException) {
@@ -76,9 +77,5 @@ class ConnectionViewModel(
                 ReconnectError.SEND_TIMEOUT
             else -> ReconnectError.SEND_FAILED
         }
-    }
-
-    private companion object {
-        const val RECONNECT_TIMEOUT_MS = 25_000L
     }
 }

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.keepstraight.KeepStraightApp
+import com.keepstraight.presentation.common.PhonePresentationConfig
 import com.keepstraight.shared.application.phone.CompleteOnboardingUseCase
 import com.keepstraight.shared.application.phone.PhoneWatchSettingsUseCase
 import com.keepstraight.shared.model.SensitivityLevel
@@ -29,7 +30,7 @@ class OnboardingViewModel(
     private val batteryProbe = AndroidBatteryOptimizationProbe(application)
 
     val sensitivity: StateFlow<SensitivityLevel> = app.userPreferencesRepository.sensitivity
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SensitivityLevel.NORMAL)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), SensitivityLevel.NORMAL)
 
     fun setSensitivity(level: SensitivityLevel) {
         viewModelScope.launch { settingsUseCase.setSensitivity(level) }

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -17,15 +16,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,14 +29,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.keepstraight.R
 import com.keepstraight.shared.model.SensitivityLevel
 import com.keepstraight.shared.presentation.DiscoverError
 import com.keepstraight.shared.presentation.DiscoverUiState
-import com.keepstraight.shared.repository.PairedDevice
+import com.keepstraight.ui.onboarding.OnboardingCopy
+import com.keepstraight.ui.onboarding.OnboardingStep
+import com.keepstraight.ui.onboarding.SensitivityRow
+import com.keepstraight.ui.onboarding.WatchNodeRow
 import com.keepstraight.ui.components.KeepStraightTopBar
 import com.keepstraight.ui.theme.PhoneCard
 import com.keepstraight.ui.theme.PhoneDimens
@@ -51,13 +48,6 @@ import com.keepstraight.util.SystemIntentsHelper
 import com.keepstraight.presentation.onboarding.OnboardingViewModel
 import com.keepstraight.presentation.pairing.WatchPairingViewModel
 
-const val STEP_WELCOME = 0
-const val STEP_PAIR = 1
-const val STEP_NOTIFICATIONS = 2
-const val STEP_BATTERY = 3
-const val STEP_WATCH_PERMISSIONS = 4
-const val STEP_CALIBRATE = 5
-const val STEP_SENSITIVITY = 6
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,10 +60,10 @@ fun OnboardingScreen(
     onOpenBluetoothSettings: () -> Unit,
     onOpenWearCompanion: (() -> Unit)?,
     onComplete: () -> Unit,
-    initialStep: Int = STEP_WELCOME,
+    initialStep: OnboardingStep = OnboardingStep.WELCOME,
     pairOnly: Boolean = false,
 ) {
-    var step by remember { mutableIntStateOf(initialStep) }
+    var step by remember { mutableStateOf(initialStep) }
     var batteryAcknowledged by remember { mutableStateOf(false) }
     val discoverState by pairingViewModel.discoverState.collectAsState()
     val availableNodes = (discoverState as? DiscoverUiState.Ready)?.nodes.orEmpty()
@@ -87,7 +77,7 @@ fun OnboardingScreen(
     val discoverFailed = discoverState as? DiscoverUiState.Failed
 
     LaunchedEffect(step) {
-        if (step == STEP_PAIR) {
+        if (step == OnboardingStep.PAIR) {
             pairingViewModel.refreshWatchNodes()
         }
     }
@@ -119,12 +109,12 @@ fun OnboardingScreen(
                 verticalArrangement = Arrangement.spacedBy(PhoneDimens.cardGap),
             ) {
                 when (step) {
-                    STEP_WELCOME -> OnboardingCopy(
+                    OnboardingStep.WELCOME -> OnboardingCopy(
                         title = stringResource(R.string.onboarding_welcome_title),
                         body = stringResource(R.string.onboarding_welcome_body),
                     )
 
-                    STEP_PAIR -> {
+                    OnboardingStep.PAIR -> {
                         OnboardingCopy(
                             title = stringResource(R.string.onboarding_pair_title),
                             body = stringResource(R.string.onboarding_pair_body),
@@ -141,8 +131,8 @@ fun OnboardingScreen(
                                     CircularProgressIndicator(
                                         modifier = Modifier
                                             .padding(end = PhoneDimens.itemGap)
-                                            .size(16.dp),
-                                        strokeWidth = 2.dp,
+                                            .size(PhoneDimens.Onboarding.inlineProgressSize),
+                                        strokeWidth = PhoneDimens.Onboarding.inlineProgressStrokeWidth,
                                     )
                                 }
                                 Text(stringResource(R.string.onboarding_pair_refresh))
@@ -218,7 +208,7 @@ fun OnboardingScreen(
                         }
                     }
 
-                    STEP_NOTIFICATIONS -> {
+                    OnboardingStep.NOTIFICATIONS -> {
                         OnboardingCopy(
                             title = stringResource(R.string.onboarding_notifications_title),
                             body = stringResource(R.string.onboarding_notifications_body),
@@ -235,7 +225,7 @@ fun OnboardingScreen(
                         }
                     }
 
-                    STEP_BATTERY -> {
+                    OnboardingStep.BATTERY -> {
                         OnboardingCopy(
                             title = stringResource(R.string.onboarding_battery_title),
                             body = stringResource(R.string.onboarding_battery_body),
@@ -273,12 +263,12 @@ fun OnboardingScreen(
                         }
                     }
 
-                    STEP_WATCH_PERMISSIONS -> OnboardingCopy(
+                    OnboardingStep.WATCH_PERMISSIONS -> OnboardingCopy(
                         title = stringResource(R.string.onboarding_watch_permissions_title),
                         body = stringResource(R.string.onboarding_watch_permissions_body),
                     )
 
-                    STEP_CALIBRATE -> {
+                    OnboardingStep.CALIBRATE -> {
                         OnboardingCopy(
                             title = stringResource(R.string.onboarding_calibrate_title),
                             body = stringResource(R.string.onboarding_calibrate_body),
@@ -290,7 +280,7 @@ fun OnboardingScreen(
                         )
                     }
 
-                    STEP_SENSITIVITY -> {
+                    OnboardingStep.SENSITIVITY -> {
                         OnboardingCopy(
                             title = stringResource(R.string.onboarding_sensitivity_title),
                             body = stringResource(R.string.onboarding_sensitivity_body),
@@ -323,9 +313,9 @@ fun OnboardingScreen(
                     ) {
                         Text(stringResource(R.string.onboarding_back))
                     }
-                } else if (step > STEP_WELCOME) {
+                } else if (step.previous() != null) {
                     OutlinedButton(
-                        onClick = { step -= 1 },
+                        onClick = { step = step.previous() ?: step },
                         shape = phoneButtonShape(),
                         colors = phoneSecondaryButtonColors(),
                     ) {
@@ -334,13 +324,13 @@ fun OnboardingScreen(
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 val canProceed = when (step) {
-                    STEP_PAIR -> pairedWatchId != null
-                    STEP_BATTERY -> batteryAcknowledged || !onboardingViewModel.isBatteryOptimizationEnabled()
+                    OnboardingStep.PAIR -> pairedWatchId != null
+                    OnboardingStep.BATTERY -> batteryAcknowledged || !onboardingViewModel.isBatteryOptimizationEnabled()
                     else -> true
                 }
-                if (step == STEP_PAIR && !pairOnly && pairedWatchId == null) {
+                if (step == OnboardingStep.PAIR && !pairOnly && pairedWatchId == null) {
                     OutlinedButton(
-                        onClick = { step += 1 },
+                        onClick = { step = step.next() ?: step },
                         shape = phoneButtonShape(),
                         colors = phoneSecondaryButtonColors(),
                     ) {
@@ -350,12 +340,12 @@ fun OnboardingScreen(
                 Button(
                     onClick = {
                         when {
-                            pairOnly && step == STEP_PAIR -> onComplete()
-                            step == STEP_SENSITIVITY -> {
+                            pairOnly && step == OnboardingStep.PAIR -> onComplete()
+                            step == OnboardingStep.SENSITIVITY -> {
                                 onboardingViewModel.completeOnboarding()
                                 onComplete()
                             }
-                            else -> step += 1
+                            else -> step = step.next() ?: step
                         }
                     },
                     enabled = canProceed,
@@ -364,9 +354,9 @@ fun OnboardingScreen(
                 ) {
                     Text(
                         when {
-                            pairOnly && step == STEP_PAIR ->
+                            pairOnly && step == OnboardingStep.PAIR ->
                                 stringResource(R.string.onboarding_pair_done)
-                            step == STEP_SENSITIVITY ->
+                            step == OnboardingStep.SENSITIVITY ->
                                 stringResource(R.string.onboarding_finish)
                             else -> stringResource(R.string.onboarding_next)
                         },
@@ -374,83 +364,5 @@ fun OnboardingScreen(
                 }
             }
         }
-    }
-}
-
-/** Title + body without a card — denser, more natural wizard copy on phone. */
-@Composable
-private fun OnboardingCopy(title: String, body: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(PhoneDimens.itemGap)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Text(
-            text = body,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun WatchNodeRow(
-    node: PairedDevice,
-    selected: Boolean,
-    onSelect: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .selectable(
-                selected = selected,
-                onClick = onSelect,
-                role = Role.RadioButton,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(PhoneDimens.rowGap),
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = null,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = MaterialTheme.colorScheme.primary,
-            ),
-        )
-        Text(
-            text = node.displayName,
-            style = MaterialTheme.typography.bodyLarge,
-        )
-    }
-}
-
-@Composable
-private fun SensitivityRow(
-    level: SensitivityLevel,
-    selected: Boolean,
-    onSelect: () -> Unit,
-) {
-    val label = when (level) {
-        SensitivityLevel.STRICT -> stringResource(R.string.sensitivity_strict)
-        SensitivityLevel.NORMAL -> stringResource(R.string.sensitivity_normal)
-        SensitivityLevel.RELAXED -> stringResource(R.string.sensitivity_relaxed)
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(PhoneDimens.rowGap),
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = null,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = MaterialTheme.colorScheme.primary,
-            ),
-        )
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
     }
 }

@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Canvas
 import com.keepstraight.R
-import com.keepstraight.data.DashboardDayStats
+import com.keepstraight.data.model.DashboardDayStats
 import com.keepstraight.data.local.WorkHourStatEntity
 import com.keepstraight.ui.theme.PhoneDimens
 import java.time.Instant
@@ -79,7 +79,7 @@ fun WorkDayChartCard(
                 goodColor = goodColor,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(132.dp),
+                    .height(PhoneDimens.Chart.height),
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -95,8 +95,11 @@ fun WorkDayChartCard(
 
 @Composable
 private fun LegendDot(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Canvas(modifier = Modifier.size(10.dp)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(PhoneDimens.Chart.legendGap),
+    ) {
+        Canvas(modifier = Modifier.size(PhoneDimens.Chart.legendDotSize)) {
             drawRoundRect(
                 color = color,
                 topLeft = Offset.Zero,

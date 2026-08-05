@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.keepstraight.KeepStraightApp
+import com.keepstraight.presentation.common.PhonePresentationConfig
 import com.keepstraight.shared.application.phone.PairingUseCase
 import com.keepstraight.shared.application.phone.PhoneWatchSettingsUseCase
 import com.keepstraight.shared.model.AlertPreferences
@@ -28,30 +29,30 @@ class SettingsViewModel(
     )
 
     val pairedWatchId: StateFlow<String?> = app.userPreferencesRepository.pairedWatchId
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), null)
 
     val isConnected: StateFlow<Boolean> = app.syncManager.isConnected
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), false)
 
     val monitoringEnabled: StateFlow<Boolean> = app.userPreferencesRepository.monitoringEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), true)
 
     val alertsEnabled: StateFlow<Boolean> = app.userPreferencesRepository.alertsEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), true)
 
     val alertPreferences: StateFlow<AlertPreferences> = app.userPreferencesRepository.alertPreferences
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AlertPreferences())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), AlertPreferences())
 
     val sensitivity: StateFlow<SensitivityLevel> = app.userPreferencesRepository.sensitivity
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SensitivityLevel.NORMAL)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), SensitivityLevel.NORMAL)
 
     val slumpDurationThresholdMs: StateFlow<Long> =
         app.userPreferencesRepository.slumpDurationThresholdMs
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 30_000L)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), SettingsDefaults.SLUMP_DURATION_MS)
 
     val repeatAlertIntervalMs: StateFlow<Long> =
         app.userPreferencesRepository.repeatAlertIntervalMs
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 5_000L)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), SettingsDefaults.REPEAT_ALERT_MS)
 
     fun setMonitoringEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsUseCase.setMonitoringEnabled(enabled) }

@@ -1,13 +1,10 @@
 package com.keepstraight.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,20 +22,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.keepstraight.KeepStraightApp
 import com.keepstraight.R
+import com.keepstraight.presentation.dashboard.DashboardViewModel
 import com.keepstraight.ui.components.BatteryOptimizationBanner
 import com.keepstraight.ui.components.KeepStraightTopBar
 import com.keepstraight.ui.components.WorkDayChartCard
+import com.keepstraight.ui.dashboard.DashboardStatusCard
 import com.keepstraight.ui.theme.PhoneCard
 import com.keepstraight.ui.theme.PhoneDimens
 import com.keepstraight.ui.theme.StatusGoodContainer
-import com.keepstraight.presentation.dashboard.DashboardViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,21 +89,21 @@ fun DashboardScreen(
 
             item {
                 when {
-                    pairedWatchId == null -> StatusCard(
+                    pairedWatchId == null -> DashboardStatusCard(
                         icon = Icons.Outlined.Watch,
                         title = stringResource(R.string.dashboard_watch_optional),
                         body = stringResource(R.string.dashboard_watch_optional_subtitle),
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         onClick = onFixConnection,
                     )
-                    isConnected -> StatusCard(
+                    isConnected -> DashboardStatusCard(
                         icon = Icons.Outlined.Watch,
                         title = stringResource(R.string.dashboard_connected),
                         body = stringResource(R.string.dashboard_connected_subtitle),
                         containerColor = StatusGoodContainer,
                         onClick = onConnectionStatus,
                     )
-                    else -> StatusCard(
+                    else -> DashboardStatusCard(
                         icon = Icons.Outlined.Watch,
                         title = stringResource(R.string.dashboard_disconnected),
                         body = stringResource(R.string.banner_connection_body),
@@ -118,7 +114,7 @@ fun DashboardScreen(
             }
 
             item {
-                StatusCard(
+                DashboardStatusCard(
                     icon = Icons.Outlined.Computer,
                     title = stringResource(R.string.dashboard_desktop_card_title),
                     body = if (desktopPaired) {
@@ -170,31 +166,5 @@ fun DashboardScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun StatusCard(
-    icon: ImageVector,
-    title: String,
-    body: String,
-    containerColor: Color,
-    onClick: () -> Unit,
-) {
-    PhoneCard(
-        modifier = Modifier.clickable(onClick = onClick),
-        containerColor = containerColor,
-    ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            text = body,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }

@@ -5,6 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.keepstraight.KeepStraightApp
 import com.keepstraight.shared.application.phone.PhoneWatchSettingsUseCase
+import com.keepstraight.data.model.DashboardDayStats
+import com.keepstraight.presentation.common.PhonePresentationConfig
+import com.keepstraight.presentation.dashboard.DashboardConfig
 import com.keepstraight.util.AndroidBatteryOptimizationProbe
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,14 +29,14 @@ class DashboardViewModel(
     private val batteryProbe = AndroidBatteryOptimizationProbe(application)
 
     val isConnected: StateFlow<Boolean> = app.syncManager.isConnected
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), false)
 
     val pairedWatchId: StateFlow<String?> = app.userPreferencesRepository.pairedWatchId
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), null)
 
     val batteryOptimizationDismissed: StateFlow<Boolean> =
         app.userPreferencesRepository.batteryOptimizationDismissed
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), false)
 
     private val batteryOptimizationNeeded = MutableStateFlow(batteryProbe.isOptimizationRequired())
 
@@ -42,13 +45,14 @@ class DashboardViewModel(
         batteryOptimizationDismissed,
     ) { needed, dismissed ->
         needed && !dismissed
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), false)
 
-    private val workStatsFromMs = System.currentTimeMillis() - 14L * 24 * 60 * 60 * 1000
-    val dashboardDays: StateFlow<List<com.keepstraight.data.DashboardDayStats>> =
+    private val workStatsFromMs =
+        System.currentTimeMillis() - DashboardConfig.WORK_STATS_LOOKBACK_DAYS * DashboardConfig.MS_PER_DAY
+    val dashboardDays: StateFlow<List<DashboardDayStats>> =
         app.postureHistoryRepository.workStatsFrom(workStatsFromMs)
             .map { stats -> app.postureHistoryRepository.dashboardDays(stats) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), emptyList())
 
     fun refreshBatteryBanner() {
         batteryOptimizationNeeded.value = batteryProbe.isOptimizationRequired()

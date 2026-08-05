@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.keepstraight.R
+import com.keepstraight.presentation.calibration.CalibrationUiConfig
 import com.keepstraight.presentation.calibration.CalibrationViewModel
 import com.keepstraight.shared.presentation.CalibrationError
 import com.keepstraight.shared.presentation.CalibrationPhase
@@ -23,6 +24,7 @@ import com.keepstraight.shared.presentation.phone.CalibrationEvent
 import com.keepstraight.ui.components.KeepStraightTopBar
 import com.keepstraight.ui.components.StatusPanel
 import com.keepstraight.ui.components.StatusTone
+import com.keepstraight.ui.calibration.calibrationErrorText
 
 @Composable
 fun CalibratePostureScreen(
@@ -43,7 +45,7 @@ fun CalibratePostureScreen(
 
     LaunchedEffect(calibrationState) {
         if (calibrationState is CalibrationUiState.Success) {
-            kotlinx.coroutines.delay(1_800)
+            kotlinx.coroutines.delay(CalibrationUiConfig.SUCCESS_DISMISS_MS)
             viewModel.onEvent(CalibrationEvent.Reset)
             viewModel.onEvent(CalibrationEvent.SuccessAcknowledged)
         }
@@ -155,14 +157,4 @@ fun CalibratePostureScreen(
             }
         }
     }
-}
-
-@Composable
-private fun calibrationErrorText(reason: CalibrationError): String = when (reason) {
-    CalibrationError.NOT_CONNECTED -> stringResource(R.string.calibrate_error_not_connected)
-    CalibrationError.SEND_FAILED -> stringResource(R.string.calibrate_error_send_failed)
-    CalibrationError.SEND_TIMEOUT -> stringResource(R.string.calibrate_error_send_timeout)
-    CalibrationError.WATCH_NO_RESPONSE -> stringResource(R.string.calibrate_error_no_response)
-    CalibrationError.SAVE_FAILED -> stringResource(R.string.calibrate_error_save_failed)
-    CalibrationError.SLUMP_TOO_SIMILAR -> stringResource(R.string.calibrate_error_slouch_similar)
 }

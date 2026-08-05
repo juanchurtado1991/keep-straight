@@ -19,6 +19,8 @@ import com.keepstraight.shared.presentation.ReconnectUiState
 import com.keepstraight.ui.components.KeepStraightTopBar
 import com.keepstraight.ui.components.StatusPanel
 import com.keepstraight.ui.components.StatusTone
+import com.keepstraight.ui.connection.reconnectErrorBody
+import com.keepstraight.presentation.connection.ConnectionConfig
 import com.keepstraight.presentation.connection.ConnectionViewModel
 
 @Composable
@@ -41,7 +43,7 @@ fun ConnectionFlowScreen(
 
     LaunchedEffect(reconnectState) {
         if (reconnectState is ReconnectUiState.Success) {
-            kotlinx.coroutines.delay(2_000)
+            kotlinx.coroutines.delay(ConnectionConfig.SUCCESS_DISMISS_MS)
             if (viewModel.reconnectState.value is ReconnectUiState.Success) {
                 viewModel.clearReconnectError()
                 onBack()
@@ -147,12 +149,4 @@ fun ConnectionFlowScreen(
             }
         }
     }
-}
-
-@Composable
-private fun reconnectErrorBody(reason: ReconnectError): String = when (reason) {
-    ReconnectError.NO_PAIRED_WATCH -> stringResource(R.string.reconnect_error_no_watch)
-    ReconnectError.WATCH_UNREACHABLE -> stringResource(R.string.reconnect_error_unreachable)
-    ReconnectError.SEND_FAILED -> stringResource(R.string.reconnect_error_send_failed)
-    ReconnectError.SEND_TIMEOUT -> stringResource(R.string.reconnect_error_timeout)
 }

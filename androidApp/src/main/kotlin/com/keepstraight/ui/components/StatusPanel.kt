@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.keepstraight.ui.theme.PhoneDimens
 import com.keepstraight.ui.theme.StatusGood
 import com.keepstraight.ui.theme.StatusGoodContainer
@@ -32,14 +31,6 @@ import com.keepstraight.ui.theme.WarningOnContainer
 import com.keepstraight.ui.theme.phoneButtonShape
 import com.keepstraight.ui.theme.phonePrimaryButtonColors
 import com.keepstraight.ui.theme.phoneSecondaryButtonColors
-
-enum class StatusTone {
-    NEUTRAL,
-    PROGRESS,
-    SUCCESS,
-    WARNING,
-    ERROR,
-}
 
 @Composable
 fun StatusPanel(
@@ -69,7 +60,7 @@ fun StatusPanel(
     ) {
         Box(
             modifier = Modifier
-                .size(96.dp)
+                .size(PhoneDimens.StatusPanel.iconCircleSize)
                 .clip(CircleShape)
                 .background(container),
             contentAlignment = Alignment.Center,
@@ -77,9 +68,9 @@ fun StatusPanel(
             when {
                 showProgress -> {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(PhoneDimens.StatusPanel.progressIndicatorSize),
                         color = accent,
-                        strokeWidth = 3.dp,
+                        strokeWidth = PhoneDimens.StatusPanel.progressStrokeWidth,
                     )
                 }
                 icon != null -> {
@@ -87,13 +78,13 @@ fun StatusPanel(
                         imageVector = icon,
                         contentDescription = null,
                         tint = accent,
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(PhoneDimens.StatusPanel.iconSize),
                     )
                 }
                 else -> {
                     Box(
                         modifier = Modifier
-                            .size(18.dp)
+                            .size(PhoneDimens.StatusPanel.dotSize)
                             .clip(CircleShape)
                             .background(accent),
                     )
@@ -129,8 +120,8 @@ fun StatusPanel(
                     CircularProgressIndicator(
                         modifier = Modifier
                             .padding(end = PhoneDimens.itemGap)
-                            .size(18.dp),
-                        strokeWidth = 2.dp,
+                            .size(PhoneDimens.StatusPanel.dotSize),
+                        strokeWidth = PhoneDimens.StatusPanel.inlineProgressStrokeWidth,
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                 }

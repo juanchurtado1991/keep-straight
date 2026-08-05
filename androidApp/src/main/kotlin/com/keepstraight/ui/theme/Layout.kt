@@ -33,6 +33,30 @@ object PhoneDimens {
     val radiusLarge: Dp = 28.dp
     val radiusMedium: Dp = 20.dp
     val radiusSmall: Dp = 14.dp
+
+    object StatusPanel {
+        val iconCircleSize: Dp = 96.dp
+        val progressIndicatorSize: Dp = 40.dp
+        val iconSize: Dp = 44.dp
+        val dotSize: Dp = 18.dp
+        val progressStrokeWidth: Dp = 3.dp
+        val inlineProgressStrokeWidth: Dp = 2.dp
+    }
+
+    object History {
+        val eventIconSize: Dp = 28.dp
+    }
+
+    object Onboarding {
+        val inlineProgressSize: Dp = 16.dp
+        val inlineProgressStrokeWidth: Dp = 2.dp
+    }
+
+    object Chart {
+        val height: Dp = 132.dp
+        val legendDotSize: Dp = 10.dp
+        val legendGap: Dp = 6.dp
+    }
 }
 
 /** Full-page light canvas with symmetric padding and scroll (matches DesktopPage). */

@@ -6,6 +6,7 @@ import androidx.paging.PagingData
 import com.keepstraight.data.local.PostureDatabase
 import com.keepstraight.data.local.PostureEventEntity
 import com.keepstraight.data.local.WorkHourStatEntity
+import com.keepstraight.data.model.DashboardDayStats
 import com.keepstraight.shared.model.PostureEvent
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -18,7 +19,7 @@ class PostureHistoryRepository(
     private val dao = database.postureEventDao()
     private val workHourDao = database.workHourStatDao()
 
-    fun eventsPaged(pageSize: Int = 30): Flow<PagingData<PostureEventEntity>> =
+    fun eventsPaged(pageSize: Int = PostureHistoryConfig.EVENTS_PAGE_SIZE): Flow<PagingData<PostureEventEntity>> =
         Pager(
             config = PagingConfig(pageSize = pageSize, enablePlaceholders = false),
             pagingSourceFactory = { dao.pagingSource() },
@@ -54,7 +55,7 @@ class PostureHistoryRepository(
     fun dashboardDays(
         stats: List<WorkHourStatEntity>,
         zone: ZoneId = ZoneId.systemDefault(),
-        maxDays: Int = 7,
+        maxDays: Int = PostureHistoryConfig.DASHBOARD_MAX_DAYS,
         nowMs: Long = System.currentTimeMillis(),
     ): List<DashboardDayStats> {
         val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
@@ -87,16 +88,4 @@ class PostureHistoryRepository(
         durationSeconds = durationSeconds,
         timestamp = timestamp,
     )
-}
-
-data class DashboardDayStats(
-    val day: LocalDate,
-    val hours: List<WorkHourStatEntity>,
-    val seatedSeconds: Int,
-    val goodPostureSeconds: Int,
-    /** True for calendar today — totals are partial and keep growing. */
-    val inProgress: Boolean = false,
-) {
-    val goodRatio: Float
-        get() = if (seatedSeconds <= 0) 0f else goodPostureSeconds.toFloat() / seatedSeconds
 }
