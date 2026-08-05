@@ -34,8 +34,11 @@ class PhoneDesktopPairClient(
     suspend fun pairByScanningDesktopQr(offer: DesktopPairOffer): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                lanIngestServer.start()
+                if (!lanIngestServer.start()) {
+                    throw PhonePairException(PhonePairError.BRIDGE_START_FAILED)
+                }
                 val code = lanIngestServer.generatePairingCode()
+                    ?: throw PhonePairException(PhonePairError.ALREADY_PAIRED)
                 val phoneHosts = lanIngestServer.refreshAddresses()
                 if (phoneHosts.isEmpty()) {
                     throw PhonePairException(PhonePairError.NO_WIFI)

@@ -63,6 +63,8 @@ fun DesktopQrScanScreen(
             PhonePairError.INVALID_CODE -> stringResource(R.string.lan_pair_invalid_code)
             PhonePairError.CODE_EXPIRED -> stringResource(R.string.lan_pair_code_expired)
             PhonePairError.TOO_MANY_ATTEMPTS -> stringResource(R.string.lan_pair_too_many_attempts)
+            PhonePairError.ALREADY_PAIRED -> stringResource(R.string.phone_pair_already_paired)
+            PhonePairError.BRIDGE_START_FAILED -> stringResource(R.string.phone_pair_bridge_start_failed)
             PhonePairError.DESKTOP_REJECTED,
             null,
             -> stringResource(R.string.desktop_qr_failed)

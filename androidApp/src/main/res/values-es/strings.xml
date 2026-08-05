@@ -189,6 +189,8 @@
     <string name="phone_pair_update_app">Actualiza KeepStraight en tu teléfono e inténtalo de nuevo.</string>
     <string name="phone_pair_no_wifi">No hay dirección Wi‑Fi en este teléfono. Únete a la misma red que tu computadora.</string>
     <string name="phone_pair_desktop_unreachable">No se pudo contactar al escritorio. ¿Misma Wi‑Fi? ¿QR aún abierto?</string>
+    <string name="phone_pair_already_paired">Este teléfono ya está vinculado a un escritorio. Desvincúlalo en Ajustes primero.</string>
+    <string name="phone_pair_bridge_start_failed">No se pudo iniciar el servicio de enlace. Cierra apps que usen el puerto 8742 e inténtalo de nuevo.</string>
     <string name="phone_pair_desktop_rejected">El escritorio rechazó el emparejamiento (%1$s)</string>
     <string name="desktop_qr_camera_denied">Se necesita permiso de cámara para escanear el QR.</string>
     <string name="desktop_qr_camera_grant">Permitir cámara</string>
@@ -204,6 +206,7 @@
     <string name="notification_desktop_bridge_title">Enlace KeepStraight escritorio</string>
     <string name="notification_desktop_bridge_paired">Escuchando alertas de postura del escritorio</string>
     <string name="notification_desktop_bridge_ready">Listo para emparejar con el escritorio</string>
+    <string name="notification_desktop_bridge_start_failed">No se pudo iniciar el enlace (¿puerto en uso?)</string>
 
     <string name="duration_seconds">%1$ds</string>
     <string name="duration_minutes_seconds">%1$dm %2$ds</string>

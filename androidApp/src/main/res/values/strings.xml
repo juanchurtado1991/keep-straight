@@ -189,6 +189,8 @@
     <string name="phone_pair_update_app">Update KeepStraight on your phone and try again.</string>
     <string name="phone_pair_no_wifi">No Wi‑Fi address on this phone. Join the same network as your computer.</string>
     <string name="phone_pair_desktop_unreachable">Could not reach desktop. Same Wi‑Fi? QR still open?</string>
+    <string name="phone_pair_already_paired">This phone is already linked to a desktop. Unlink it in Settings first.</string>
+    <string name="phone_pair_bridge_start_failed">Could not start the desktop link service. Close other apps using port 8742 and try again.</string>
     <string name="phone_pair_desktop_rejected">Desktop rejected pairing (%1$s)</string>
     <string name="desktop_qr_camera_denied">Camera permission is required to scan the QR.</string>
     <string name="desktop_qr_camera_grant">Allow camera</string>
@@ -204,6 +206,7 @@
     <string name="notification_desktop_bridge_title">KeepStraight desktop link</string>
     <string name="notification_desktop_bridge_paired">Listening for desktop posture alerts</string>
     <string name="notification_desktop_bridge_ready">Ready to pair with desktop</string>
+    <string name="notification_desktop_bridge_start_failed">Desktop link could not start (port in use?)</string>
 
     <!-- Duration formatting -->
     <string name="duration_seconds">%1$ds</string>

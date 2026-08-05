@@ -12,6 +12,8 @@ enum class PhonePairError(@StringRes val messageRes: Int) {
     INVALID_CODE(R.string.lan_pair_invalid_code),
     CODE_EXPIRED(R.string.lan_pair_code_expired),
     TOO_MANY_ATTEMPTS(R.string.lan_pair_too_many_attempts),
+    ALREADY_PAIRED(R.string.phone_pair_already_paired),
+    BRIDGE_START_FAILED(R.string.phone_pair_bridge_start_failed),
     DESKTOP_REJECTED(R.string.desktop_qr_failed),
 }
 
@@ -21,11 +23,11 @@ fun phonePairErrorFromProtocol(code: BridgeProtocolError?): PhonePairError = whe
     BridgeProtocolError.INVALID_CODE -> PhonePairError.INVALID_CODE
     BridgeProtocolError.CODE_EXPIRED -> PhonePairError.CODE_EXPIRED
     BridgeProtocolError.TOO_MANY_ATTEMPTS -> PhonePairError.TOO_MANY_ATTEMPTS
+    BridgeProtocolError.PAIRED -> PhonePairError.ALREADY_PAIRED
     BridgeProtocolError.UNAUTHORIZED,
     BridgeProtocolError.PAIRING_FAILED,
     BridgeProtocolError.INVALID_RESPONSE,
     BridgeProtocolError.INVALID_SETTINGS,
-    BridgeProtocolError.PAIRED,
     null,
     -> PhonePairError.DESKTOP_REJECTED
 }

@@ -27,7 +27,7 @@ class PhoneLanBridgeService : Service() {
         createNotificationChannel()
         val app = application as KeepStraightApp
         app.lanIngestServer.onPairingStateChanged = { updateNotification() }
-        app.lanIngestServer.start()
+        val serverStarted = app.lanIngestServer.start()
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
@@ -73,11 +73,13 @@ class PhoneLanBridgeService : Service() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val paired = (application as KeepStraightApp).lanIngestServer.isPairedWithDesktop()
-        val body = if (paired) {
-            getString(R.string.notification_desktop_bridge_paired)
-        } else {
-            getString(R.string.notification_desktop_bridge_ready)
+        val app = application as KeepStraightApp
+        val startFailed = app.lanIngestServer.startError.value != null
+        val paired = app.lanIngestServer.isPairedWithDesktop()
+        val body = when {
+            startFailed -> getString(R.string.notification_desktop_bridge_start_failed)
+            paired -> getString(R.string.notification_desktop_bridge_paired)
+            else -> getString(R.string.notification_desktop_bridge_ready)
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -101,7 +103,7 @@ class PhoneLanBridgeService : Service() {
             try {
                 appContext.startForegroundService(intent)
             } catch (e: Exception) {
-                Log.w(TAG, "Could not start desktop bridge FGS: ${e.message}")
+                Log.e(TAG, "Could not start desktop bridge FGS: ${e.message}", e)
             }
         }
 
