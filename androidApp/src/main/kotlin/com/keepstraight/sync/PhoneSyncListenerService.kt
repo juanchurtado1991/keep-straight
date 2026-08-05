@@ -62,7 +62,6 @@ class PhoneSyncListenerService : WearableListenerService() {
         runCatching {
             val result = CalibrationResultCodec.decode(data)
             app.userPreferencesRepository.setCalibration(result.basePitch, result.baseRoll)
-            app.syncManager.onCalibrationResult(result)
         }.onFailure { Log.e(TAG, "Failed handling calibrate result", it) }
     }
 

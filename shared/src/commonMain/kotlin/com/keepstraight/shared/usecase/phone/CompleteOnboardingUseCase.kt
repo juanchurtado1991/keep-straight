@@ -9,6 +9,6 @@ class CompleteOnboardingUseCase(
 ) {
     suspend operator fun invoke() {
         preferencesRepository.setOnboardingComplete(true)
-        deviceSyncGateway.syncAllPreferences()
+        runCatching { deviceSyncGateway.syncAllPreferences() }
     }
 }

@@ -241,11 +241,7 @@ class PhoneWearSyncManager(
 
         val pitch = userPreferencesRepository.calibrationPitch.first()
         val roll = userPreferencesRepository.calibrationRoll.first()
-        return if (pitch != null && roll != null) {
-            sendCalibration(buildCalibrationConfig(pitch, roll, sensitivity))
-        } else {
-            Result.success(Unit)
-        }
+        return sendCalibration(buildCalibrationConfig(pitch ?: 0f, roll ?: 0f, sensitivity))
     }
 
     private suspend fun buildCalibrationConfig(
@@ -367,6 +363,9 @@ class PhoneWearSyncManager(
     }
 
     override suspend fun syncAllPreferences(): Result<Unit> {
+        val watchId = userPreferencesRepository.pairedWatchId.first()
+        if (watchId == null) return Result.success(Unit)
+
         val sensitivity = userPreferencesRepository.sensitivity.first()
         val alertPrefs = userPreferencesRepository.alertPreferences.first()
         val monitoring = userPreferencesRepository.monitoringEnabled.first()
@@ -389,13 +388,20 @@ class PhoneWearSyncManager(
     }
 
     fun onCalibrationResult(result: CalibrationCaptureResult) {
-        Log.i(TAG, "Calibration result received pitch=${result.basePitch} roll=${result.baseRoll}")
-        _calibrationResult.tryEmit(result)
-        val deferred = calibrationDeferred
-        if (deferred != null && deferred.isActive) {
-            deferred.complete(result)
+        scope.launch {
+            calibrationMutex.withLock {
+                val key = result.capturedAt
+                if (key == lastCalibrationResultKey) return@launch
+                lastCalibrationResultKey = key
+                Log.i(TAG, "Calibration result received pitch=${result.basePitch} roll=${result.baseRoll}")
+                _calibrationResult.tryEmit(result)
+                calibrationDeferred?.takeIf { it.isActive }?.complete(result)
+            }
         }
     }
+
+    @Volatile
+    private var lastCalibrationResultKey: Long = 0L
 
     private suspend fun sendToPairedWatch(path: String, payload: ByteArray): Result<Unit> =
         withContext(Dispatchers.IO) {
