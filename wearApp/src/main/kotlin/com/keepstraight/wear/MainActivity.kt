@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.keepstraight.wear.alerts.AlertDispatcher
 import com.keepstraight.wear.service.PostureMonitoringService
+import com.keepstraight.wear.presentation.WearUiConfig
 import com.keepstraight.wear.ui.MonitoringScreen
 
 class MainActivity : ComponentActivity() {
@@ -32,7 +33,7 @@ class MainActivity : ComponentActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == AlertDispatcher.ACTION_ALERT_FLASH) {
                 flashVisible = true
-                window.decorView.postDelayed({ flashVisible = false }, FLASH_DURATION_MS)
+                window.decorView.postDelayed({ flashVisible = false }, WearUiConfig.ALERT_FLASH_DURATION_MS)
             }
         }
     }
@@ -85,9 +86,5 @@ class MainActivity : ComponentActivity() {
         if (permissions.isNotEmpty()) {
             permissionLauncher.launch(permissions.toTypedArray())
         }
-    }
-
-    private companion object {
-        const val FLASH_DURATION_MS = 300L
     }
 }

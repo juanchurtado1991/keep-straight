@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Keep Straight</string>
+    <string name="notification_channel_name">Monitoreo de postura</string>
+    <string name="notification_channel_description">Muestra cuando el monitoreo de postura está activo en tu reloj</string>
+    <string name="notification_title">Keep Straight</string>
+    <string name="notification_monitoring_active">Monitoreando postura</string>
+
+    <string name="status_monitoring">Listo</string>
+    <string name="status_monitoring_hint">El escritorio detecta la postura — el reloj vibra con alertas</string>
+    <string name="status_alerts_paused">Alertas en pausa</string>
+    <string name="status_alerts_paused_hint">Reanuda las alertas desde la app del teléfono</string>
+    <string name="status_algorithm_off">En espera</string>
+    <string name="status_algorithm_off_hint">Activa Monitoreo desde la app del teléfono</string>
+    <string name="status_not_sitting">No sentado</string>
+    <string name="status_not_sitting_hint">En pausa mientras te mueves</string>
+    <string name="status_not_worn">No puesto</string>
+    <string name="status_not_worn_hint">Ponte el reloj para reanudar</string>
+    <string name="status_phone_retry">Teléfono desconectado</string>
+    <string name="status_phone_retry_hint">Reintentando sincronización…</string>
+    <string name="status_phone_paused">En pausa</string>
+    <string name="status_phone_paused_hint">Reconecta desde el teléfono</string>
+    <string name="status_dnd">No molestar</string>
+    <string name="status_dnd_hint">Seguimiento activo — alertas silenciadas</string>
+    <string name="status_calibrating">Calibrando</string>
+    <string name="status_calibrating_hint">Quédate quieto…</string>
+    <string name="status_deviation">%1$d° desde erguido</string>
+    <string name="status_slump_score">Encorvado %1$d%%</string>
+</resources>
