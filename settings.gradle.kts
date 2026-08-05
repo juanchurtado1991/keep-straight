@@ -22,6 +22,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "KeepStraight"
 include(":shared")
+include(":shared-ui")
 include(":androidApp")
 include(":wearApp")
 include(":desktopApp")

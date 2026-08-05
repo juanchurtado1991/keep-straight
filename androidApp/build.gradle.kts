@@ -70,6 +70,7 @@ dependencies {
         implementation("androidx.fragment:fragment:1.8.6")
     }
     implementation(project(":shared"))
+    implementation(project(":shared-ui"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)

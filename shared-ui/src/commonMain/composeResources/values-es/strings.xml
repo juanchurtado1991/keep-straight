@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_done">Listo</string>
+    <string name="action_back">Atrás</string>
+
+    <string name="sensitivity_title">Sensibilidad</string>
+    <string name="sensitivity_strict">Estricta — avisa rápido</string>
+    <string name="sensitivity_normal">Normal — equilibrada</string>
+    <string name="sensitivity_relaxed">Relajada — menos avisos</string>
+    <string name="sensitivity_slump_delay_title">Tiempo antes de la primera alerta</string>
+    <string name="sensitivity_slump_delay_value">%1$s de encorvamiento sostenido</string>
+    <string name="sensitivity_slump_delay_hint">Usa 5–15 segundos para probar. El valor predeterminado es 30 segundos.</string>
+    <string name="sensitivity_repeat_title">Repetir alerta cada</string>
+    <string name="sensitivity_repeat_value">Cada %1$d segundos hasta que te sientes erguido</string>
+
+    <string name="duration_seconds">%1$d s</string>
+    <string name="duration_minutes_long">%1$d min</string>
+    <string name="duration_minutes_seconds">%1$d min %2$d s</string>
+
+    <string name="settings_section_sensitivity">Sensibilidad</string>
+    <string name="settings_section_sensitivity_from_phone">Sensibilidad (desde el teléfono)</string>
+    <string name="settings_alert_timing">Primera alerta tras %1$s · repetir cada %2$s</string>
+    <string name="settings_phone_owns_timers">El teléfono controla estos valores mientras esté vinculado. Cámbialos en la app del teléfono o desvincula el teléfono para controlarlos aquí.</string>
+    <string name="settings_time_seconds">%1$d s</string>
+    <string name="settings_time_minutes">%1$d min</string>
+</resources>

@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.keepstraight.shared.model.AlertPreferences
 import com.keepstraight.shared.model.SensitivityLevel
+import com.keepstraight.shared.model.SensitivityTimingLimits
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -165,11 +166,11 @@ class UserPreferencesRepository(
     }
 
     companion object {
-        const val DEFAULT_SLUMP_DURATION_MS = 30_000L
-        const val DEFAULT_REPEAT_ALERT_MS = 5_000L
-        const val MIN_SLUMP_DURATION_MS = 5_000L
-        const val MAX_SLUMP_DURATION_MS = 300_000L
-        const val MIN_REPEAT_ALERT_MS = 2_000L
-        const val MAX_REPEAT_ALERT_MS = 30_000L
+        const val DEFAULT_SLUMP_DURATION_MS = SensitivityTimingLimits.DEFAULT_SLUMP_DURATION_MS
+        const val DEFAULT_REPEAT_ALERT_MS = SensitivityTimingLimits.DEFAULT_REPEAT_ALERT_MS
+        const val MIN_SLUMP_DURATION_MS = SensitivityTimingLimits.MIN_SLUMP_DURATION_MS
+        const val MAX_SLUMP_DURATION_MS = SensitivityTimingLimits.MAX_SLUMP_DURATION_MS
+        const val MIN_REPEAT_ALERT_MS = SensitivityTimingLimits.MIN_REPEAT_ALERT_MS
+        const val MAX_REPEAT_ALERT_MS = SensitivityTimingLimits.MAX_REPEAT_ALERT_MS
     }
 }
