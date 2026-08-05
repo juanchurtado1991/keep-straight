@@ -1,13 +1,23 @@
 package com.keepstraight.desktop.navigation
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.keepstraight.desktop.DesktopSessionController
+import com.keepstraight.sharedui.i18n.SharedStrings
+import com.keepstraight.sharedui.navigation.SensitivityScreenRoute
 import com.keepstraight.desktop.ui.CalibrationScreen
 import com.keepstraight.desktop.ui.DesktopSettingsScreen
 import com.keepstraight.desktop.ui.home.HomeScreen
@@ -85,6 +95,11 @@ data class SettingsScreenRoute(
             onBack = { navigator.pop() },
             onHideToTray = onHideToTray,
             onOpenCompanionSetup = { navigator.push(CompanionSetupScreenRoute) },
+            onOpenFullSensitivity = {
+                if (!controller.uiState.value.settingsFromPhone) {
+                    navigator.push(buildDesktopSensitivityRoute(controller) { navigator.pop() })
+                }
+            },
             onQuit = onQuit,
         )
     }
@@ -100,5 +115,45 @@ data object CompanionSetupScreenRoute : Screen {
             controller = controller,
             onFinished = { navigator.pop() },
         )
+    }
+}
+
+private fun buildDesktopSensitivityRoute(
+    controller: DesktopSessionController,
+    onBack: () -> Unit,
+): SensitivityScreenRoute {
+    val ui = controller.uiState.value
+    return SensitivityScreenRoute(
+        sensitivity = ui.sensitivity,
+        slumpDurationMs = ui.slumpDurationThresholdMs,
+        repeatAlertMs = ui.repeatAlertIntervalMs,
+        showTimingSliders = true,
+        settingsFromPhone = ui.settingsFromPhone,
+        sensitivityEnabled = !ui.settingsFromPhone,
+        onSensitivityChange = controller::setSensitivity,
+        onSlumpTimingChange = { slumpMs, repeatMs ->
+            controller.setSlumpDurationMs(slumpMs)
+            controller.setRepeatAlertMs(repeatMs)
+        },
+        header = {
+            DesktopSensitivityHeader(onBack = onBack)
+        },
+    )
+}
+
+@Composable
+private fun DesktopSensitivityHeader(onBack: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            SharedStrings.sensitivityTitle(),
+            style = MaterialTheme.typography.headlineLarge,
+        )
+        TextButton(onClick = onBack) {
+            Text(SharedStrings.actionDone())
+        }
     }
 }
