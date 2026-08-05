@@ -17,7 +17,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.keepstraight.desktop.DesktopSessionController
 import com.keepstraight.sharedui.i18n.SharedStrings
-import com.keepstraight.sharedui.navigation.SensitivityScreenRoute
+import com.keepstraight.sharedui.sensitivity.SharedSensitivityScreen
 import com.keepstraight.desktop.ui.CalibrationScreen
 import com.keepstraight.desktop.ui.DesktopSettingsScreen
 import com.keepstraight.desktop.ui.home.HomeScreen
@@ -97,7 +97,7 @@ data class SettingsScreenRoute(
             onOpenCompanionSetup = { navigator.push(CompanionSetupScreenRoute) },
             onOpenFullSensitivity = {
                 if (!controller.uiState.value.settingsFromPhone) {
-                    navigator.push(buildDesktopSensitivityRoute(controller) { navigator.pop() })
+                    navigator.push(DesktopSensitivityScreenRoute { navigator.pop() })
                 }
             },
             onQuit = onQuit,
@@ -118,27 +118,28 @@ data object CompanionSetupScreenRoute : Screen {
     }
 }
 
-private fun buildDesktopSensitivityRoute(
-    controller: DesktopSessionController,
-    onBack: () -> Unit,
-): SensitivityScreenRoute {
-    val ui = controller.uiState.value
-    return SensitivityScreenRoute(
-        sensitivity = ui.sensitivity,
-        slumpDurationMs = ui.slumpDurationThresholdMs,
-        repeatAlertMs = ui.repeatAlertIntervalMs,
-        showTimingSliders = true,
-        settingsFromPhone = ui.settingsFromPhone,
-        sensitivityEnabled = !ui.settingsFromPhone,
-        onSensitivityChange = controller::setSensitivity,
-        onSlumpTimingChange = { slumpMs, repeatMs ->
-            controller.setSlumpDurationMs(slumpMs)
-            controller.setRepeatAlertMs(repeatMs)
-        },
-        header = {
-            DesktopSensitivityHeader(onBack = onBack)
-        },
-    )
+private data class DesktopSensitivityScreenRoute(
+    private val onBack: () -> Unit,
+) : Screen {
+    @Composable
+    override fun Content() {
+        val controller = koinInject<DesktopSessionController>()
+        val ui by controller.uiState.collectAsState()
+        SharedSensitivityScreen(
+            sensitivity = ui.sensitivity,
+            slumpDurationMs = ui.slumpDurationThresholdMs,
+            repeatAlertMs = ui.repeatAlertIntervalMs,
+            showTimingSliders = true,
+            settingsFromPhone = ui.settingsFromPhone,
+            sensitivityEnabled = !ui.settingsFromPhone,
+            onSensitivityChange = controller::setSensitivity,
+            onSlumpTimingChange = { slumpMs, repeatMs ->
+                controller.setSlumpDurationMs(slumpMs)
+                controller.setRepeatAlertMs(repeatMs)
+            },
+            header = { DesktopSensitivityHeader(onBack = onBack) },
+        )
+    }
 }
 
 @Composable
