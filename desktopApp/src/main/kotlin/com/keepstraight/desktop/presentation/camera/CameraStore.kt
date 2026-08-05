@@ -118,12 +118,12 @@ class CameraStore(
         if (err != null) {
             session.onCameraError(err)
         } else {
-            session.clearIssue()
+            session.clearCameraIssue()
         }
     }
 
     fun retryCamera() {
-        session.clearIssue()
+        session.clearCameraIssue()
         stopCameraPipeline()
         ensureCamera()
         camera?.refreshDevices()
