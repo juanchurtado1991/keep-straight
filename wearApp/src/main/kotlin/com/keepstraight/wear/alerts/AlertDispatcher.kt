@@ -52,6 +52,10 @@ class AlertDispatcher(private val context: Context) {
     fun dispatchAlert(preferences: AlertPreferences) {
         if (isDndActive()) return
 
+        if (!preferences.soundEnabled) {
+            activeRingtone?.stop()
+            activeRingtone = null
+        }
         if (preferences.hapticEnabled) {
             playInsistentHaptic()
         }
