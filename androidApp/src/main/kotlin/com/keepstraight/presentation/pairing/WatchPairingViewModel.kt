@@ -52,8 +52,12 @@ class WatchPairingViewModel(
 
     fun pairWatch(nodeId: String) {
         viewModelScope.launch {
-            pairingUseCase.pairDevice(nodeId)
-            deviceSyncGateway.refreshConnectionStatus()
+            try {
+                pairingUseCase.pairDevice(nodeId)
+                deviceSyncGateway.refreshConnectionStatus()
+            } catch (_: Exception) {
+                _discoverState.value = DiscoverUiState.Failed(DiscoverError.FAILED)
+            }
         }
     }
 
