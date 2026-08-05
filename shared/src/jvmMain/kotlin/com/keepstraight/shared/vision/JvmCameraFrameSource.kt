@@ -241,7 +241,7 @@ class JvmCameraFrameSource : CameraFrameSource {
             buffer[i++] = ((px shr 8) and 0xFF).toByte()
             buffer[i++] = (px and 0xFF).toByte()
         }
-        return CameraFrame(width = w, height = h, rgb = buffer, timestampMs = timestampMs)
+        return CameraFrame(width = w, height = h, rgb = buffer.copyOf(), timestampMs = timestampMs)
     }
 
     private fun abs(v: Int): Int = if (v < 0) -v else v
