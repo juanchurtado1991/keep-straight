@@ -1,4 +1,4 @@
-package com.keepstraight.shared.usecase.phone
+package com.keepstraight.shared.application.phone
 
 import com.keepstraight.shared.repository.DeviceSyncGateway
 import com.keepstraight.shared.repository.PreferencesRepository
