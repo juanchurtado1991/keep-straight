@@ -60,8 +60,6 @@ object NativeDesktopNotifier {
                 timeoutSec = 10,
             )
             if (launched) {
-                // Helper schedules the banner and exits; give it a moment.
-                Thread.sleep(400)
                 return Result(shown = true, limited = false)
             }
             val binary = File(app, "Contents/MacOS/KeepStraightNotify")
