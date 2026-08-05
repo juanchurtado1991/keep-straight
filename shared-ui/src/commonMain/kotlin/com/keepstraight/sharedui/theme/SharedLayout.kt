@@ -1,4 +1,4 @@
-package com.keepstraight.ui.theme
+package com.keepstraight.sharedui.theme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -17,55 +17,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import com.keepstraight.sharedui.theme.SharedDimens
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/**
- * Same spacing scale as desktop [SharedDimens] — One UI 8 calm desk/phone chrome.
- */
-object PhoneDimens {
-    val pagePadding = SharedDimens.pagePadding
-    val sectionGap = SharedDimens.sectionGap
-    val cardGap = SharedDimens.cardGap
-    val cardPadding = SharedDimens.cardPadding
-    val rowGap = SharedDimens.rowGap
-    val itemGap = SharedDimens.itemGap
-    val radiusLarge = SharedDimens.radiusLarge
-    val radiusMedium = SharedDimens.radiusMedium
-    val radiusSmall = SharedDimens.radiusSmall
-
-    object StatusPanel {
-        val iconCircleSize: Dp = 96.dp
-        val progressIndicatorSize: Dp = 40.dp
-        val iconSize: Dp = 44.dp
-        val dotSize: Dp = 18.dp
-        val progressStrokeWidth: Dp = 3.dp
-        val inlineProgressStrokeWidth: Dp = 2.dp
-    }
-
-    object History {
-        val eventIconSize: Dp = 28.dp
-    }
-
-    object Onboarding {
-        val inlineProgressSize: Dp = 16.dp
-        val inlineProgressStrokeWidth: Dp = 2.dp
-    }
-
-    object Chart {
-        val height: Dp = 132.dp
-        val legendDotSize: Dp = 10.dp
-        val legendGap: Dp = 6.dp
-    }
+/** Symmetric spacing scale shared by phone and desktop Compose surfaces. */
+object SharedDimens {
+    val pagePadding: Dp = 28.dp
+    val sectionGap: Dp = 16.dp
+    val cardGap: Dp = 12.dp
+    val cardPadding: Dp = 20.dp
+    val rowGap: Dp = 10.dp
+    val itemGap: Dp = 8.dp
+    val radiusLarge: Dp = 28.dp
+    val radiusMedium: Dp = 20.dp
+    val radiusSmall: Dp = 14.dp
 }
 
-/** Full-page light canvas with symmetric padding and scroll (matches DesktopPage). */
 @Composable
-fun PhonePage(
+fun SharedPage(
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(PhoneDimens.pagePadding),
-    verticalGap: Dp = PhoneDimens.sectionGap,
+    contentPadding: PaddingValues = PaddingValues(SharedDimens.pagePadding),
+    verticalGap: Dp = SharedDimens.sectionGap,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -79,19 +51,18 @@ fun PhonePage(
     )
 }
 
-/** One UI–style white rounded card (matches DesktopCard). */
 @Composable
-fun PhoneCard(
+fun SharedCard(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surface,
-    contentPadding: PaddingValues = PaddingValues(PhoneDimens.cardPadding),
-    verticalGap: Dp = PhoneDimens.cardGap,
+    contentPadding: PaddingValues = PaddingValues(SharedDimens.cardPadding),
+    verticalGap: Dp = SharedDimens.cardGap,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(PhoneDimens.radiusLarge))
+            .clip(RoundedCornerShape(SharedDimens.radiusLarge))
             .background(containerColor)
             .padding(contentPadding),
         verticalArrangement = Arrangement.spacedBy(verticalGap),
@@ -100,7 +71,7 @@ fun PhoneCard(
 }
 
 @Composable
-fun phonePrimaryButtonColors() = ButtonDefaults.buttonColors(
+fun sharedPrimaryButtonColors() = ButtonDefaults.buttonColors(
     containerColor = MaterialTheme.colorScheme.primary,
     contentColor = MaterialTheme.colorScheme.onPrimary,
     disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -108,11 +79,11 @@ fun phonePrimaryButtonColors() = ButtonDefaults.buttonColors(
 )
 
 @Composable
-fun phoneSecondaryButtonColors() = ButtonDefaults.outlinedButtonColors(
+fun sharedSecondaryButtonColors() = ButtonDefaults.outlinedButtonColors(
     contentColor = MaterialTheme.colorScheme.onSurface,
     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
 )
 
-fun phoneCardShape() = RoundedCornerShape(PhoneDimens.radiusLarge)
-fun phoneButtonShape() = RoundedCornerShape(PhoneDimens.radiusMedium)
-fun phoneChipShape() = RoundedCornerShape(PhoneDimens.radiusSmall)
+fun sharedCardShape() = RoundedCornerShape(SharedDimens.radiusLarge)
+fun sharedButtonShape() = RoundedCornerShape(SharedDimens.radiusMedium)
+fun sharedChipShape() = RoundedCornerShape(SharedDimens.radiusSmall)

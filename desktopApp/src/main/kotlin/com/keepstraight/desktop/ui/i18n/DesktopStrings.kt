@@ -1,6 +1,8 @@
 package com.keepstraight.desktop.ui.i18n
 
 import androidx.compose.runtime.Composable
+import com.keepstraight.shared.model.SensitivityLevel
+import com.keepstraight.sharedui.i18n.SharedStrings
 import com.keepstraight.desktop.generated.resources.Res
 import com.keepstraight.desktop.generated.resources.action_accept
 import com.keepstraight.desktop.generated.resources.action_back
@@ -105,7 +107,6 @@ import com.keepstraight.desktop.generated.resources.sensitivity_relaxed
 import com.keepstraight.desktop.generated.resources.sensitivity_normal
 import com.keepstraight.desktop.generated.resources.sensitivity_strict
 import com.keepstraight.desktop.generated.resources.settings_sound_label
-import com.keepstraight.shared.model.SensitivityLevel
 import com.keepstraight.desktop.generated.resources.settings_sound_subtitle
 import com.keepstraight.desktop.generated.resources.settings_start_hidden_label
 import com.keepstraight.desktop.generated.resources.settings_start_hidden_subtitle
@@ -334,17 +335,13 @@ object DesktopStrings {
 
     @Composable fun settingsNoCamera() = stringResource(Res.string.settings_no_camera)
 
-    @Composable fun settingsSectionSensitivity() = stringResource(Res.string.settings_section_sensitivity)
+    @Composable fun settingsSectionSensitivity() = SharedStrings.settingsSectionSensitivity()
 
     @Composable fun settingsSectionSensitivityFromPhone() =
-        stringResource(Res.string.settings_section_sensitivity_from_phone)
+        SharedStrings.settingsSectionSensitivityFromPhone()
 
     @Composable
-    fun sensitivityLabel(level: SensitivityLevel): String = when (level) {
-        SensitivityLevel.STRICT -> stringResource(Res.string.sensitivity_strict)
-        SensitivityLevel.NORMAL -> stringResource(Res.string.sensitivity_normal)
-        SensitivityLevel.RELAXED -> stringResource(Res.string.sensitivity_relaxed)
-    }
+    fun sensitivityLabel(level: SensitivityLevel): String = SharedStrings.sensitivityLabel(level)
 
     /** Maps JvmCameraFrameSource fallback names (Camera 0) to localized labels. */
     @Composable
@@ -354,9 +351,9 @@ object DesktopStrings {
     }
 
     @Composable fun settingsAlertTiming(first: String, repeat: String) =
-        stringResource(Res.string.settings_alert_timing, first, repeat)
+        SharedStrings.settingsAlertTiming(first, repeat)
 
-    @Composable fun settingsPhoneOwnsTimers() = stringResource(Res.string.settings_phone_owns_timers)
+    @Composable fun settingsPhoneOwnsTimers() = SharedStrings.settingsPhoneOwnsTimers()
 
     @Composable fun settingsSectionGeneral() = stringResource(Res.string.settings_section_general)
 

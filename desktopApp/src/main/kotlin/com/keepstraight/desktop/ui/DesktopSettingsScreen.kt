@@ -31,7 +31,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.keepstraight.desktop.DesktopSessionController
 import com.keepstraight.desktop.alert.NativeDesktopNotifier
-import com.keepstraight.shared.model.SensitivityLevel
+import com.keepstraight.sharedui.i18n.SharedStrings
+import com.keepstraight.sharedui.sensitivity.SharedInlineSensitivitySection
 import com.keepstraight.shared.presentation.BridgeConnectionState
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -41,6 +42,7 @@ fun DesktopSettingsScreen(
     onBack: () -> Unit,
     onHideToTray: (() -> Unit)?,
     onOpenCompanionSetup: () -> Unit,
+    onOpenFullSensitivity: (() -> Unit)? = null,
     onQuit: () -> Unit,
 ) {
     val ui by controller.uiState.collectAsState()
@@ -206,44 +208,24 @@ fun DesktopSettingsScreen(
 
         SettingsSection(
             if (ui.settingsFromPhone) {
-                DesktopStrings.settingsSectionSensitivityFromPhone()
+                SharedStrings.settingsSectionSensitivityFromPhone()
             } else {
-                DesktopStrings.settingsSectionSensitivity()
+                SharedStrings.settingsSectionSensitivity()
             },
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(DesktopDimens.rowGap)) {
-                SensitivityLevel.entries.forEach { level ->
-                    val selected = ui.sensitivity == level
-                    if (selected) {
-                        Button(
-                            onClick = { controller.setSensitivity(level) },
-                            enabled = !ui.settingsFromPhone,
-                            colors = desktopPrimaryButtonColors(),
-                            shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                        ) { Text(DesktopStrings.sensitivityLabel(level)) }
-                    } else {
-                        OutlinedButton(
-                            onClick = { controller.setSensitivity(level) },
-                            enabled = !ui.settingsFromPhone,
-                            colors = desktopSecondaryButtonColors(),
-                            shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                        ) { Text(DesktopStrings.sensitivityLabel(level)) }
-                    }
-                }
-            }
-            Text(
-                DesktopStrings.settingsAlertTiming(formatMs(ui.slumpDurationThresholdMs),
-                    formatMs(ui.repeatAlertIntervalMs),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            SharedInlineSensitivitySection(
+                sensitivity = ui.sensitivity,
+                slumpDurationMs = ui.slumpDurationThresholdMs,
+                repeatAlertMs = ui.repeatAlertIntervalMs,
+                settingsFromPhone = ui.settingsFromPhone,
+                sensitivityEnabled = !ui.settingsFromPhone,
+                onSensitivityChange = controller::setSensitivity,
+                sectionTitle = {},
             )
-            if (ui.settingsFromPhone) {
-                Text(
-                    DesktopStrings.settingsPhoneOwnsTimers(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            if (onOpenFullSensitivity != null && !ui.settingsFromPhone) {
+                TextButton(onClick = onOpenFullSensitivity) {
+                    Text(SharedStrings.sensitivityTitle())
+                }
             }
         }
 
@@ -350,14 +332,4 @@ private fun companionStatusText(state: BridgeConnectionState, host: String): Str
     BridgeConnectionState.PAIRED -> DesktopStrings.settingsBridgeLinked(host)
     BridgeConnectionState.DEGRADED -> DesktopStrings.settingsBridgeDegraded(host)
     BridgeConnectionState.FAILED -> DesktopStrings.settingsBridgeFailed()
-}
-
-@Composable
-private fun formatMs(ms: Long): String {
-    val totalSec = (ms / 1000L).coerceAtLeast(0L)
-    return if (totalSec < 60L) {
-        DesktopStrings.settingsTimeSeconds(totalSec)
-    } else {
-        DesktopStrings.settingsTimeMinutes(totalSec / 60L)
-    }
 }
