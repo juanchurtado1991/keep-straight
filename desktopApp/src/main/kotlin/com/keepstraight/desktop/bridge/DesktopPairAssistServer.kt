@@ -43,8 +43,11 @@ class DesktopPairAssistServer(
         val nonce = UUID.randomUUID().toString().replace("-", "").take(16)
         expectedNonce = nonce
         val hosts = discoverIpv4Addresses()
+        if (hosts.isEmpty()) {
+            throw IllegalStateException("No LAN IPv4 address available for QR pairing")
+        }
         val offer = DesktopPairOffer(
-            hosts = hosts.ifEmpty { listOf("127.0.0.1") },
+            hosts = hosts,
             port = DesktopLanProtocol.PAIR_ASSIST_PORT,
             nonce = nonce,
         )

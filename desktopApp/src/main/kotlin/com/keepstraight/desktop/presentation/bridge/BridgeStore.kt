@@ -50,6 +50,7 @@ class BridgeStore(
     private var pairAssist: DesktopPairAssistServer? = null
     private var pairAssistStopJob: Job? = null
     private val pairingMutex = Mutex()
+    private val pairAssistLaunchMutex = Mutex()
     private var phoneAlertsEnabled: Boolean = true
 
     private val _bridgeState = MutableStateFlow(
@@ -138,18 +139,26 @@ class BridgeStore(
 
     /** Binding/unbinding the assist server blocks, so it never runs on the UI thread. */
     fun showPairQr() {
-        val previous = pairAssist
-        pairAssist = null
-        _pairQrBitmap.value = null
-        _pairMessage.value = UserMessage(DesktopMessageKey.BRIDGE_GETTING_CODE)
-        _qrPairingActive.value = true
         scope.launch {
-            awaitPairAssistStopped(previous)
-            val assist = DesktopPairAssistServer { hello -> handlePhoneHello(hello) }
-            val offer = withContext(Dispatchers.IO) { assist.start() }
-            pairAssist = assist
-            _pairQrBitmap.value = QrCodeBitmap.encode(DesktopPairingQr.encode(offer))
-            _pairMessage.value = UserMessage(DesktopMessageKey.BRIDGE_SCAN_QR)
+            pairAssistLaunchMutex.withLock {
+                val previous = pairAssist
+                pairAssist = null
+                _pairQrBitmap.value = null
+                _pairMessage.value = UserMessage(DesktopMessageKey.BRIDGE_GETTING_CODE)
+                _qrPairingActive.value = true
+                awaitPairAssistStopped(previous)
+                val assist = DesktopPairAssistServer { hello -> handlePhoneHello(hello) }
+                val offer = try {
+                    withContext(Dispatchers.IO) { assist.start() }
+                } catch (_: IllegalStateException) {
+                    _qrPairingActive.value = false
+                    _pairMessage.value = UserMessage(DesktopMessageKey.BRIDGE_CANT_REACH)
+                    return@withLock
+                }
+                pairAssist = assist
+                _pairQrBitmap.value = QrCodeBitmap.encode(DesktopPairingQr.encode(offer))
+                _pairMessage.value = UserMessage(DesktopMessageKey.BRIDGE_SCAN_QR)
+            }
         }
     }
 
@@ -167,16 +176,17 @@ class BridgeStore(
         cancelPairQr()
         stopSettingsSync()
         stopWorkSampleSync()
-        bridge.clear()
-        _bridgeHost.value = ""
-        _bridgeState.value = BridgeConnectionState.NOT_CONFIGURED
-        session.clearPhoneSettingsFlag()
-        session.clearIssue()
-        // Desktop owns its settings again, and a future phone must not inherit the old
-        // "alerts off" answer before its first settings sync.
-        phoneAlertsEnabled = true
-        onBridgeCleared()
-        _pairMessage.value = UserMessage(DesktopMessageKey.BRIDGE_UNLINKED)
+        scope.launch {
+            bridge.notifyRemoteUnpair()
+            bridge.clear()
+            _bridgeHost.value = ""
+            _bridgeState.value = BridgeConnectionState.NOT_CONFIGURED
+            session.clearPhoneSettingsFlag()
+            session.clearIssue()
+            phoneAlertsEnabled = true
+            onBridgeCleared()
+            _pairMessage.value = UserMessage(DesktopMessageKey.BRIDGE_UNLINKED)
+        }
     }
 
     fun shutdown() {
