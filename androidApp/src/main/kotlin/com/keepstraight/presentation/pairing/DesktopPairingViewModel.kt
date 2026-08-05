@@ -5,6 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.keepstraight.KeepStraightApp
 import com.keepstraight.bridge.AndroidDesktopPairingGateway
+import com.keepstraight.presentation.pairing.model.DesktopPairingPhase
+import com.keepstraight.presentation.pairing.model.DesktopPairingUiState
+import com.keepstraight.bridge.PhonePairException
 import com.keepstraight.shared.application.phone.PairDesktopUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,19 +15,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
-
-enum class DesktopPairingPhase {
-    IDLE,
-    PAIRING,
-    SUCCESS,
-    FAILED,
-    INVALID_QR,
-}
-
-data class DesktopPairingUiState(
-    val phase: DesktopPairingPhase = DesktopPairingPhase.IDLE,
-    val errorMessage: String? = null,
-)
 
 class DesktopPairingViewModel(
     application: Application,
@@ -43,7 +33,7 @@ class DesktopPairingViewModel(
     fun onQrPayload(raw: String) {
         if (!handled.compareAndSet(false, true)) return
         viewModelScope.launch {
-            _state.update { it.copy(phase = DesktopPairingPhase.PAIRING, errorMessage = null) }
+            _state.update { it.copy(phase = DesktopPairingPhase.PAIRING, error = null, errorDetail = null) }
             pairDesktop.pairFromQrPayload(raw).fold(
                 onSuccess = {
                     _state.update { it.copy(phase = DesktopPairingPhase.SUCCESS) }
@@ -55,8 +45,13 @@ class DesktopPairingViewModel(
                     } else {
                         DesktopPairingPhase.FAILED
                     }
+                    val pairError = (err as? PhonePairException)?.error
                     _state.update {
-                        it.copy(phase = phase, errorMessage = err.message)
+                        it.copy(
+                            phase = phase,
+                            error = pairError,
+                            errorDetail = (err as? PhonePairException)?.message,
+                        )
                     }
                 },
             )

@@ -28,7 +28,7 @@ class PhoneDesktopPairClient(
                 val code = lanIngestServer.generatePairingCode()
                 val phoneHosts = lanIngestServer.refreshAddresses()
                 if (phoneHosts.isEmpty()) {
-                    error("No Wi‑Fi address on this phone. Join the same network as your computer.")
+                    throw PhonePairException(PhonePairError.NO_WIFI)
                 }
                 val hello = PhoneHelloRequest(
                     nonce = offer.nonce,
@@ -36,17 +36,18 @@ class PhoneDesktopPairClient(
                     phoneHosts = phoneHosts,
                     phonePort = DesktopLanProtocol.DEFAULT_PORT,
                 )
-                var lastError: String? = null
+                var lastError: PhonePairException? = null
                 for (desktopHost in offer.hosts) {
                     val ok = postHello(desktopHost, offer.port, hello)
                     if (ok.isSuccess) {
                         Log.i(TAG, "Desktop pair OK via $desktopHost")
                         return@runCatching
                     }
-                    lastError = ok.exceptionOrNull()?.message
-                    Log.w(TAG, "Hello to $desktopHost failed: $lastError")
+                    val err = ok.exceptionOrNull()
+                    lastError = err as? PhonePairException
+                    Log.w(TAG, "Hello to $desktopHost failed: ${err?.message}")
                 }
-                error(lastError ?: "Could not reach desktop. Same Wi‑Fi? QR still open?")
+                throw lastError ?: PhonePairException(PhonePairError.DESKTOP_UNREACHABLE)
             }
         }
 
@@ -63,8 +64,11 @@ class PhoneDesktopPairClient(
         }
         val body = response.bodyAsText()
         val parsed = DesktopLanJson.parsePhoneHelloResponse(body)
-        if (!response.status.isSuccess() || !parsed.ok) {
-            error(parsed.message.ifBlank { "Desktop rejected pairing (${response.status.value})" })
+        if (!response.status.isSuccess() || parsed == null || !parsed.ok) {
+            throw PhonePairException(
+                PhonePairError.DESKTOP_REJECTED,
+                parsed?.message?.ifBlank { null } ?: response.status.value.toString(),
+            )
         }
     }
 

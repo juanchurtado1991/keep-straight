@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Keep Straight</string>
 
-    <!-- Onboarding -->
+    
     <string name="onboarding_welcome_title">Welcome to Keep Straight</string>
     <string name="onboarding_welcome_body">KeepStraight watches your posture with your computer\'s webcam. This phone shows your desk time and can pass alerts to a watch.</string>
     <string name="onboarding_pair_title">Pair your watch (optional)</string>
@@ -34,13 +34,13 @@
     <string name="onboarding_calibrate_done">You can calibrate later on your computer.</string>
     <string name="onboarding_calibrate_again">Recalibrate</string>
     <string name="onboarding_calibrate_skip">Skip for now</string>
-    <string name="onboarding_sensitivity_title">Choose sensitivity</string>
-    <string name="onboarding_sensitivity_body">How strictly should Keep Straight treat slumping? You can change this later.</string>
+    <string name="onboarding_sensitivity_title">Elige la sensibilidad</string>
+    <string name="onboarding_sensitivity_body">¿Qué tan estricto debe ser Keep Straight con la mala postura? Puedes cambiarlo después.</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_finish">Get started</string>
     <string name="onboarding_back">Back</string>
 
-    <!-- Dashboard -->
+    
     <string name="dashboard_title">Dashboard</string>
     <string name="dashboard_recalibrate">Calibrate on computer</string>
     <string name="dashboard_monitoring">Watch ready</string>
@@ -61,9 +61,9 @@
     <string name="dashboard_disconnected">Watch disconnected</string>
     <string name="dashboard_reconnect">Reconnect</string>
     <string name="dashboard_reconnecting">Reconnecting…</string>
-    <string name="dashboard_desktop_card_title">Connect computer</string>
-    <string name="dashboard_desktop_card_body">Scan the desktop QR to pair — same Wi‑Fi.</string>
-    <string name="dashboard_desktop_card_paired">Paired with desktop. Tap to scan again if needed.</string>
+    <string name="dashboard_desktop_card_title">Conectar computadora</string>
+    <string name="dashboard_desktop_card_body">Escanea el QR del escritorio para emparejar — misma Wi‑Fi.</string>
+    <string name="dashboard_desktop_card_paired">Emparejado con el escritorio. Toca para escanear de nuevo si hace falta.</string>
     <string name="dashboard_charts_title">Desk time</string>
     <string name="dashboard_charts_subtitle">Hours seated at your computer and time with good posture — today updates as you work.</string>
     <string name="dashboard_charts_empty">No desk-time data yet. Pair desktop and start a session.</string>
@@ -75,7 +75,7 @@
     <string name="dashboard_legend_seated">Seated</string>
     <string name="dashboard_legend_good">Good posture</string>
 
-    <!-- Banners -->
+    
     <string name="banner_battery_title">Battery restrictions on</string>
     <string name="banner_battery_body">Background restrictions may delay posture history sync</string>
     <string name="banner_battery_dismiss">Dismiss</string>
@@ -87,7 +87,7 @@
     <string name="reconnect_error_send_failed">Could not talk to the watch. Make sure Keep Straight is installed and open once on the watch.</string>
     <string name="reconnect_error_timeout">Reconnect timed out. Try again with the watch nearby and unlocked.</string>
 
-    <!-- Connection flow -->
+    
     <string name="connection_flow_title">Watch connection</string>
     <string name="connection_flow_disconnected_title">Watch disconnected</string>
     <string name="connection_flow_disconnected_body">Keep the watch nearby, unlock it, and open Keep Straight once on the watch. Then reconnect.</string>
@@ -103,7 +103,7 @@
     <string name="connection_flow_open_bluetooth">Open Bluetooth settings</string>
     <string name="connection_flow_open_watch_hint_action">Back to dashboard</string>
 
-    <!-- Calibrate -->
+    
     <string name="calibrate_title">Calibrate posture</string>
     <string name="calibrate_ready_title">Ready to calibrate</string>
     <string name="calibrate_offline_title">Watch offline</string>
@@ -132,7 +132,7 @@
     <string name="calibrate_error_slouch_similar">Your slouch pose looked too similar to upright. Slouch more clearly (round shoulders / lean forward) and try again.</string>
     <string name="calibrate_not_connected">Connect your watch before calibrating.</string>
 
-    <!-- History -->
+    
     <string name="history_title">History</string>
     <string name="history_empty">No posture events yet.</string>
     <string name="history_error">Could not load history. Try again later.</string>
@@ -144,25 +144,25 @@
     <string name="event_resumed">Monitoring resumed</string>
     <string name="event_duration">Duration: %1$s</string>
 
-    <!-- Alert settings -->
+    
     <string name="alert_settings_title">Alert settings</string>
     <string name="alert_haptic">Watch haptic</string>
     <string name="alert_visual">Watch visual</string>
     <string name="alert_sound">Watch sound</string>
     <string name="alert_phone_notification">Phone notification</string>
 
-    <!-- Sensitivity -->
-    <string name="sensitivity_title">Sensitivity</string>
-    <string name="sensitivity_strict">Strict — alerts quickly</string>
-    <string name="sensitivity_normal">Normal — balanced</string>
-    <string name="sensitivity_relaxed">Relaxed — fewer alerts</string>
+    
+    <string name="sensitivity_title">Sensibilidad</string>
+    <string name="sensitivity_strict">Estricta — avisa rápido</string>
+    <string name="sensitivity_normal">Normal — equilibrada</string>
+    <string name="sensitivity_relaxed">Relajada — menos avisos</string>
     <string name="sensitivity_slump_delay_title">Time before first alert</string>
     <string name="sensitivity_slump_delay_value">%1$s of sustained slump</string>
     <string name="sensitivity_slump_delay_hint">Use 5–15 seconds to test. Default is 30 seconds.</string>
     <string name="sensitivity_repeat_title">Repeat alert every</string>
     <string name="sensitivity_repeat_value">Every %1$d seconds until you sit up</string>
 
-    <!-- Settings -->
+    
     <string name="settings_title">Settings</string>
     <string name="settings_paired_watch">Paired watch</string>
     <string name="settings_no_watch">No watch paired</string>
@@ -174,36 +174,36 @@
     <string name="settings_sensitivity">Sensitivity</string>
     <string name="settings_change_watch">Change paired watch</string>
     <string name="settings_unpair">Unpair watch</string>
-    <string name="settings_desktop_bridge">Desktop companion</string>
-    <string name="settings_desktop_bridge_body">On your computer, tap Show QR to pair. Then scan that QR here — same Wi‑Fi.</string>
-    <string name="settings_desktop_bridge_paired">Paired with desktop</string>
-    <string name="settings_desktop_bridge_not_paired">Not paired</string>
-    <string name="settings_desktop_bridge_scan_qr">Scan desktop QR</string>
-    <string name="settings_desktop_bridge_clear">Clear desktop pairing</string>
-    <string name="desktop_qr_title">Scan desktop QR</string>
-    <string name="desktop_qr_hint">Point at the KeepStraight QR on your computer</string>
-    <string name="desktop_qr_pairing">Pairing with desktop…</string>
-    <string name="desktop_qr_success">Paired with desktop</string>
-    <string name="desktop_qr_failed">Couldn’t pair. Try again.</string>
-    <string name="phone_pair_no_wifi">No Wi‑Fi address on this phone. Join the same network as your computer.</string>
-    <string name="phone_pair_desktop_unreachable">Could not reach desktop. Same Wi‑Fi? QR still open?</string>
-    <string name="phone_pair_desktop_rejected">Desktop rejected pairing (%1$s)</string>
+    <string name="settings_desktop_bridge">Compañero de escritorio</string>
+    <string name="settings_desktop_bridge_body">En tu computadora, pulsa Mostrar QR para emparejar. Luego escanea ese QR aquí — misma Wi‑Fi.</string>
+    <string name="settings_desktop_bridge_paired">Emparejado con el escritorio</string>
+    <string name="settings_desktop_bridge_not_paired">Sin emparejar</string>
+    <string name="settings_desktop_bridge_scan_qr">Escanear QR del escritorio</string>
+    <string name="settings_desktop_bridge_clear">Quitar emparejamiento con escritorio</string>
+    <string name="desktop_qr_title">Escanea el QR del escritorio</string>
+    <string name="desktop_qr_hint">Apunta al código QR de KeepStraight en tu computadora</string>
+    <string name="desktop_qr_pairing">Emparejando con el escritorio…</string>
+    <string name="desktop_qr_success">Emparejado con el escritorio</string>
+    <string name="desktop_qr_failed">No se pudo emparejar. Inténtalo de nuevo.</string>
+    <string name="phone_pair_no_wifi">No hay dirección Wi‑Fi en este teléfono. Únete a la misma red que tu computadora.</string>
+    <string name="phone_pair_desktop_unreachable">No se pudo contactar al escritorio. ¿Misma Wi‑Fi? ¿QR aún abierto?</string>
+    <string name="phone_pair_desktop_rejected">El escritorio rechazó el emparejamiento (%1$s)</string>
     <string name="desktop_qr_camera_denied">Camera permission is required to scan the QR.</string>
     <string name="desktop_qr_camera_grant">Allow camera</string>
     <string name="desktop_qr_camera_settings">Open app settings</string>
 
-    <!-- Notifications -->
+    
     <string name="notification_channel_posture">Posture alerts</string>
     <string name="notification_channel_posture_desc">Alerts when slumping is detected</string>
     <string name="notification_slump_title">Posture alert</string>
     <string name="notification_slump_body">You\'ve been slumping for %1$s</string>
     <string name="notification_channel_desktop_bridge">Desktop companion</string>
     <string name="notification_channel_desktop_bridge_desc">Keeps the phone reachable by KeepStraight on your computer</string>
-    <string name="notification_desktop_bridge_title">KeepStraight desktop link</string>
-    <string name="notification_desktop_bridge_paired">Listening for desktop posture alerts</string>
-    <string name="notification_desktop_bridge_ready">Ready to pair with desktop</string>
+    <string name="notification_desktop_bridge_title">Enlace KeepStraight escritorio</string>
+    <string name="notification_desktop_bridge_paired">Escuchando alertas de postura del escritorio</string>
+    <string name="notification_desktop_bridge_ready">Listo para emparejar con el escritorio</string>
 
-    <!-- Common -->
+    
     <string name="action_back">Back</string>
     <string name="action_save">Save</string>
 </resources>

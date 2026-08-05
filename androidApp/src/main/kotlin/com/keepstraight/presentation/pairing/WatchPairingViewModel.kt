@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.keepstraight.KeepStraightApp
+import com.keepstraight.presentation.common.PhonePresentationConfig
+import com.keepstraight.presentation.pairing.WatchPairingConfig
 import com.keepstraight.shared.application.phone.PairingUseCase
 import com.keepstraight.shared.presentation.DiscoverError
 import com.keepstraight.shared.presentation.DiscoverUiState
@@ -28,7 +30,7 @@ class WatchPairingViewModel(
     )
 
     val pairedWatchId: StateFlow<String?> = app.userPreferencesRepository.pairedWatchId
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), null)
 
     private val _discoverState = MutableStateFlow<DiscoverUiState>(DiscoverUiState.Idle)
     val discoverState: StateFlow<DiscoverUiState> = _discoverState.asStateFlow()
@@ -40,7 +42,7 @@ class WatchPairingViewModel(
         discoverJob = viewModelScope.launch {
             _discoverState.value = DiscoverUiState.Loading
             try {
-                val nodes = withTimeout(DISCOVER_TIMEOUT_MS) {
+                val nodes = withTimeout(WatchPairingConfig.DISCOVER_TIMEOUT_MS) {
                     pairingUseCase.discoverDevices()
                 }
                 _discoverState.value = DiscoverUiState.Ready(nodes)
@@ -63,9 +65,5 @@ class WatchPairingViewModel(
         viewModelScope.launch {
             pairingUseCase.unpairDevice()
         }
-    }
-
-    private companion object {
-        const val DISCOVER_TIMEOUT_MS = 8_000L
     }
 }
