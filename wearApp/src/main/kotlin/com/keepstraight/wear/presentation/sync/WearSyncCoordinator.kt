@@ -22,7 +22,7 @@ class WearSyncCoordinator(
     private val deliveryLock = Any()
 
     fun acceptDelivery(path: String, payload: ByteArray, sourceNodeId: String): Boolean {
-        val key = "$path|$sourceNodeId|${payload.contentHashCode()}"
+        val key = "$path|$sourceNodeId|${payload.size}|${payload.contentHashCode()}"
         synchronized(deliveryLock) {
             if (recentDeliveryKeys.contains(key)) return false
             recentDeliveryKeys.addLast(key)
