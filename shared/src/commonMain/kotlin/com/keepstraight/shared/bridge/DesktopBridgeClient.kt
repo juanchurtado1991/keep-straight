@@ -8,5 +8,7 @@ interface DesktopBridgeClient {
     suspend fun pair(host: String, port: Int, code: String): Result<String>
     suspend fun sendEvent(event: DesktopSlumpEvent): Result<Unit>
     suspend fun fetchSettings(): Result<DesktopPhoneSettings>
+    /** Best-effort notify phone to drop this desktop token before clearing local creds. */
+    suspend fun notifyRemoteUnpair()
     fun clear()
 }

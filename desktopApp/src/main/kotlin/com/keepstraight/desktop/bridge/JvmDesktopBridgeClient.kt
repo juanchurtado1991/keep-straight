@@ -13,6 +13,7 @@ import com.keepstraight.shared.bridge.DesktopSlumpEvent
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -25,6 +26,11 @@ class JvmDesktopBridgeClient(
     private val prefs: Preferences,
 ) : DesktopBridgeClient {
     private val client = HttpClient(CIO) {
+        install(HttpTimeout) {
+            connectTimeoutMillis = LAN_CONNECT_TIMEOUT_MS
+            requestTimeoutMillis = LAN_REQUEST_TIMEOUT_MS
+            socketTimeoutMillis = LAN_REQUEST_TIMEOUT_MS
+        }
         install(ContentNegotiation) {
             ghost()
         }
@@ -149,6 +155,16 @@ class JvmDesktopBridgeClient(
         }
     }
 
+    override suspend fun notifyRemoteUnpair() {
+        val h = host ?: return
+        val t = token ?: return
+        runCatching {
+            client.post("http://$h:$port${DesktopLanProtocol.PATH_UNPAIR}") {
+                header(DesktopLanProtocol.HEADER_TOKEN, t)
+            }
+        }
+    }
+
     override fun clear() {
         host = null
         token = null
@@ -159,5 +175,10 @@ class JvmDesktopBridgeClient(
 
     fun close() {
         client.close()
+    }
+
+    private companion object {
+        const val LAN_CONNECT_TIMEOUT_MS = 5_000L
+        const val LAN_REQUEST_TIMEOUT_MS = 15_000L
     }
 }

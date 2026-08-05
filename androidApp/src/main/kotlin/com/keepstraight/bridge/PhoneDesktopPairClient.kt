@@ -9,6 +9,7 @@ import com.keepstraight.shared.bridge.PhoneHelloResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -20,6 +21,11 @@ class PhoneDesktopPairClient(
     private val lanIngestServer: PhoneLanIngestServer,
 ) {
     private val client = HttpClient(CIO) {
+        install(HttpTimeout) {
+            connectTimeoutMillis = LAN_CONNECT_TIMEOUT_MS
+            requestTimeoutMillis = LAN_REQUEST_TIMEOUT_MS
+            socketTimeoutMillis = LAN_REQUEST_TIMEOUT_MS
+        }
         install(ContentNegotiation) {
             ghost()
         }
@@ -81,5 +87,7 @@ class PhoneDesktopPairClient(
 
     private companion object {
         const val TAG = "PhoneDesktopPair"
+        const val LAN_CONNECT_TIMEOUT_MS = 5_000L
+        const val LAN_REQUEST_TIMEOUT_MS = 15_000L
     }
 }

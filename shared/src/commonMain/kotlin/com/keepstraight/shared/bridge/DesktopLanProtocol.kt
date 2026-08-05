@@ -15,6 +15,7 @@ object DesktopLanProtocol {
     const val PATH_PING = "/v1/ping"
     const val PATH_EVENT = "/v1/slump-event"
     const val PATH_PAIR = "/v1/pair"
+    const val PATH_UNPAIR = "/v1/unpair"
     /** Phone is source of truth for sensitivity + timers (phase 2). */
     const val PATH_SETTINGS = "/v1/settings"
     /** Phone → desktop after scanning QR. */
