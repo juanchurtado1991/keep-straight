@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
@@ -74,6 +75,16 @@ class MainActivity : ComponentActivity() {
                     AppRoutes.DASHBOARD
                 } else {
                     AppRoutes.ONBOARDING
+                }
+
+                LaunchedEffect(onboardingComplete) {
+                    if (onboardingComplete &&
+                        navController.currentDestination?.route == AppRoutes.ONBOARDING
+                    ) {
+                        navController.navigate(AppRoutes.DASHBOARD) {
+                            popUpTo(AppRoutes.ONBOARDING) { inclusive = true }
+                        }
+                    }
                 }
 
                 fun openConnection(autoStart: Boolean) {
