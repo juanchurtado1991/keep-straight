@@ -202,7 +202,7 @@
     <string name="body_camera_open_failed">La cámara no pudo abrirse. Prueba otro dispositivo o reinicia la app.
 En Linux ARM (aarch64) aún no hay drivers nativos — usa una compilación x86_64 si puedes.</string>
     <string name="body_camera_disconnected">La webcam se desconectó. Vuelve a conectarla y reintenta.</string>
-    <string name="body_pose_model_missing">Ejecuta desktopApp/scripts/download-movenet.sh y reinicia KeepStraight.</string>
+    <string name="body_pose_model_missing">Faltan archivos de detección de postura en esta instalación. Reinstala KeepStraight desde el paquete oficial o contacta soporte si compilaste desde código.</string>
     <string name="body_calibrate_erect_first">Captura tu buena postura sentado antes de la encorvada.</string>
     <string name="body_poses_too_similar">Siéntate erguido, luego encorva más (hombros redondos / inclínate) y reintenta.</string>
     <string name="body_no_pose_calibrate">Siéntate frente a la cámara con buena luz e intenta calibrar de nuevo.</string>

@@ -3,6 +3,8 @@ package com.keepstraight.desktop.ui.wizard
 import com.keepstraight.desktop.ui.i18n.DesktopStrings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +54,19 @@ fun FirstRunWizard(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                DesktopPreflight.hints().forEach { hint ->
+                    Text(
+                        hint.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = DesktopDimens.rowGap),
+                    )
+                    Text(
+                        hint.body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(DesktopDimens.rowGap)) {
                     Button(
                         onClick = {

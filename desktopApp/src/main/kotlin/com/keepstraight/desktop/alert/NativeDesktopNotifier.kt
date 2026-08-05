@@ -127,7 +127,7 @@ object NativeDesktopNotifier {
             ${'$'}text.Item(0).AppendChild(${'$'}template.CreateTextNode(${psString(title)})) > ${'$'}null
             ${'$'}text.Item(1).AppendChild(${'$'}template.CreateTextNode(${psString(body)})) > ${'$'}null
             ${'$'}toast = [Windows.UI.Notifications.ToastNotification]::new(${'$'}template)
-            [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('KeepStraight').Show(${'$'}toast)
+            [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('com.keepstraight.desktop').Show(${'$'}toast)
         """.trimIndent()
         val ok = runProcess(
             listOf(

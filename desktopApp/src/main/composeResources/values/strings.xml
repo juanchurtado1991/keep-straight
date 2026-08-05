@@ -206,7 +206,7 @@
     <string name="body_camera_open_failed">The camera failed to open. Try another device or restart the app.
 On Linux ARM (aarch64), native webcam drivers aren’t bundled yet — use an x86_64 build if you can.</string>
     <string name="body_camera_disconnected">The webcam was disconnected. Reconnect it and retry.</string>
-    <string name="body_pose_model_missing">Run desktopApp/scripts/download-movenet.sh, then restart KeepStraight.</string>
+    <string name="body_pose_model_missing">Posture detection files are missing from this install. Reinstall KeepStraight from the official package, or contact support if you built from source.</string>
     <string name="body_calibrate_erect_first">Capture your good sitting posture before the slumped pose.</string>
     <string name="body_poses_too_similar">Sit up clearly, then slouch more (round shoulders / lean forward) and retry.</string>
     <string name="body_no_pose_calibrate">Sit facing the camera with good light, then try calibration again.</string>
