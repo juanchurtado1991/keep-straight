@@ -1,3 +1,4 @@
+import org.gradle.internal.os.OperatingSystem
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -11,6 +12,7 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
+    implementation(compose.components.resources)
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.onnxruntime)
     implementation(libs.webcam.capture)
@@ -37,6 +39,7 @@ compose.desktop {
             macOS {
                 bundleID = "com.keepstraight.desktop"
                 iconFile.set(project.file("icons/icon.icns"))
+                dockName = "KeepStraight"
                 infoPlist {
                     extraKeysRawXml = """
                         <key>NSCameraUsageDescription</key>
@@ -46,21 +49,37 @@ compose.desktop {
             }
             windows {
                 iconFile.set(project.file("icons/icon.ico"))
+                shortcut = true
+                menu = true
+                menuGroup = "KeepStraight"
             }
             linux {
                 iconFile.set(project.file("icons/icon.png"))
+                shortcut = true
+                packageName = "keepstraight"
+                appCategory = "Utility"
+                menuGroup = "Utility"
+                debMaintainer = "KeepStraight <support@keepstraight.app>"
             }
         }
         jvmArgs("-Xmx512m")
     }
 }
 
-// The desktop app sideloads the companion apps over wireless adb, so every `run` and every
-// packaged distribution has to carry freshly built release APKs. Pass
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.keepstraight.desktop.generated.resources"
+}
+
+// The desktop app sideloads companion apps over wireless adb. Pass
 // -Pkeepstraight.skipApkSync=true to iterate on desktop-only code without Android builds.
+// -Pkeepstraight.companionApks=phone|wear|both (default both) to trim installer size.
 val skipApkSync = providers.gradleProperty("keepstraight.skipApkSync")
     .map(String::toBoolean)
     .getOrElse(false)
+
+val companionApksMode = providers.gradleProperty("keepstraight.companionApks")
+    .getOrElse("both")
 
 val stagedApkRoot: Provider<Directory> = layout.buildDirectory.dir("companionApks")
 
@@ -84,25 +103,59 @@ val stageWearApk = registerApkStaging("stageWearApk", ":wearApp", "keepstraight-
 
 val syncCompanionApks = tasks.register("syncCompanionApks") {
     group = "keepstraight"
-    description = "Builds the phone and watch release APKs and stages them for the desktop app."
-    dependsOn(stagePhoneApk, stageWearApk)
+    description = "Builds companion release APKs and stages them for the desktop app (see keepstraight.companionApks)."
+    when (companionApksMode) {
+        "phone" -> dependsOn(stagePhoneApk)
+        "wear" -> dependsOn(stageWearApk)
+        else -> dependsOn(stagePhoneApk, stageWearApk)
+    }
 }
 
 sourceSets.named("main") {
     resources.srcDir(stagedApkRoot)
 }
 
-tasks.named("processResources") {
-    dependsOn(syncCompanionApks)
+fun hostAdbPlatform(): String = when {
+    OperatingSystem.current().isWindows -> "windows"
+    OperatingSystem.current().isMacOsX -> "macos"
+    else -> "linux"
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+/** Picks bundled adb for the packaging target (packageMsi → windows, etc.). Override with -PadbPlatform=. */
+val adbPlatform = providers.gradleProperty("adbPlatform").orElse(
+    providers.provider {
+        val requested = gradle.startParameter.taskNames
+            .joinToString(" ")
+            .lowercase()
+        when {
+            "packagemsi" in requested || "packageexe" in requested -> "windows"
+            "packagedmg" in requested -> "macos"
+            "packagedeb" in requested || "packagerpm" in requested -> "linux"
+            else -> hostAdbPlatform()
+        }
+    },
+)
+
+tasks.named<ProcessResources>("processResources") {
+    dependsOn(syncCompanionApks)
+    inputs.property("adbPlatform", adbPlatform)
+    inputs.property("companionApksMode", companionApksMode)
+    filesMatching("adb/**") {
+        val platform = adbPlatform.get()
+        val folder = relativePath.segments.getOrNull(1)
+        if (folder != null && folder != platform && folder != "NOTICE.txt") {
+            exclude()
+        }
     }
 }
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
