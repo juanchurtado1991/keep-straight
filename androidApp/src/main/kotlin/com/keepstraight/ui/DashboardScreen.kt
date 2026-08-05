@@ -38,12 +38,12 @@ import com.keepstraight.ui.components.WorkDayChartCard
 import com.keepstraight.ui.theme.PhoneCard
 import com.keepstraight.ui.theme.PhoneDimens
 import com.keepstraight.ui.theme.StatusGoodContainer
-import com.keepstraight.viewmodel.MainViewModel
+import com.keepstraight.presentation.dashboard.DashboardViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    viewModel: MainViewModel,
+    viewModel: DashboardViewModel,
     onSettings: () -> Unit,
     onScanDesktopQr: () -> Unit,
     onOpenBatterySettings: () -> Unit,
