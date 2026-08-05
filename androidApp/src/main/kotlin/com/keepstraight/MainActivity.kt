@@ -10,7 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.compose.koinViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             KeepStraightTheme {
-                val shellViewModel: AppShellViewModel = viewModel()
+                val shellViewModel: AppShellViewModel = koinViewModel()
                 val navController = rememberNavController()
                 val onboardingComplete by shellViewModel.onboardingComplete.collectAsState()
                 val events = shellViewModel.eventsPaged.collectAsLazyPagingItems()
@@ -81,8 +81,8 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(navController = navController, startDestination = startDestination) {
                     composable(AppRoutes.ONBOARDING) {
-                        val pairingViewModel: WatchPairingViewModel = viewModel()
-                        val onboardingViewModel: OnboardingViewModel = viewModel()
+                        val pairingViewModel: WatchPairingViewModel = koinViewModel()
+                        val onboardingViewModel: OnboardingViewModel = koinViewModel()
                         OnboardingScreen(
                             pairingViewModel = pairingViewModel,
                             onboardingViewModel = onboardingViewModel,
@@ -110,8 +110,8 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(AppRoutes.CHANGE_WATCH) {
-                        val pairingViewModel: WatchPairingViewModel = viewModel()
-                        val onboardingViewModel: OnboardingViewModel = viewModel()
+                        val pairingViewModel: WatchPairingViewModel = koinViewModel()
+                        val onboardingViewModel: OnboardingViewModel = koinViewModel()
                         OnboardingScreen(
                             pairingViewModel = pairingViewModel,
                             onboardingViewModel = onboardingViewModel,
@@ -131,7 +131,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(AppRoutes.DASHBOARD) {
-                        val dashboardVm: DashboardViewModel = viewModel()
+                        val dashboardVm: DashboardViewModel = koinViewModel()
                         dashboardViewModel = dashboardVm
                         DashboardScreen(
                             viewModel = dashboardVm,
@@ -152,7 +152,7 @@ class MainActivity : ComponentActivity() {
                         ),
                     ) { entry ->
                         val autoStart = entry.arguments?.getBoolean(NavArguments.AUTO_START) ?: false
-                        val connectionViewModel: ConnectionViewModel = viewModel()
+                        val connectionViewModel: ConnectionViewModel = koinViewModel()
                         ConnectionFlowScreen(
                             viewModel = connectionViewModel,
                             autoStart = autoStart,
@@ -176,7 +176,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(AppRoutes.ALERT_SETTINGS) {
-                        val settingsViewModel: SettingsViewModel = viewModel()
+                        val settingsViewModel: SettingsViewModel = koinViewModel()
                         AlertSettingsScreen(
                             viewModel = settingsViewModel,
                             onBack = { navController.popBackStack() },
@@ -184,7 +184,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(AppRoutes.SENSITIVITY) {
-                        val settingsViewModel: SettingsViewModel = viewModel()
+                        val settingsViewModel: SettingsViewModel = koinViewModel()
                         SensitivityScreen(
                             viewModel = settingsViewModel,
                             onBack = { navController.popBackStack() },
@@ -192,7 +192,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(AppRoutes.SETTINGS) {
-                        val settingsViewModel: SettingsViewModel = viewModel()
+                        val settingsViewModel: SettingsViewModel = koinViewModel()
                         SettingsScreen(
                             viewModel = settingsViewModel,
                             onOpenNotificationSettings = {
@@ -219,7 +219,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(AppRoutes.CALIBRATE) {
-                        val calibrationViewModel: CalibrationViewModel = viewModel()
+                        val calibrationViewModel: CalibrationViewModel = koinViewModel()
                         CalibratePostureScreen(
                             viewModel = calibrationViewModel,
                             onBack = { navController.popBackStack() },
@@ -228,7 +228,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(AppRoutes.DESKTOP_QR) {
-                        val desktopPairingViewModel: DesktopPairingViewModel = viewModel()
+                        val desktopPairingViewModel: DesktopPairingViewModel = koinViewModel()
                         DesktopQrScanScreen(
                             viewModel = desktopPairingViewModel,
                             onBack = { navController.popBackStack() },

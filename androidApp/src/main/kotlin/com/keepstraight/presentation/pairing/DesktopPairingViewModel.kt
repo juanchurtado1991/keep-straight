@@ -1,10 +1,7 @@
 package com.keepstraight.presentation.pairing
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.keepstraight.KeepStraightApp
-import com.keepstraight.bridge.AndroidDesktopPairingGateway
 import com.keepstraight.bridge.PhonePairException
 import com.keepstraight.bridge.PhonePairError
 import com.keepstraight.bridge.phonePairErrorFromProtocol
@@ -20,13 +17,8 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 class DesktopPairingViewModel(
-    application: Application,
-) : AndroidViewModel(application) {
-
-    private val app = application as KeepStraightApp
-    private val pairDesktop = PairDesktopUseCase(
-        AndroidDesktopPairingGateway(app.lanIngestServer),
-    )
+    private val pairDesktop: PairDesktopUseCase,
+) : ViewModel() {
 
     private val _state = MutableStateFlow(DesktopPairingUiState())
     val state: StateFlow<DesktopPairingUiState> = _state.asStateFlow()

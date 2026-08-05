@@ -1,14 +1,14 @@
 package com.keepstraight.presentation.pairing
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.keepstraight.KeepStraightApp
 import com.keepstraight.presentation.common.PhonePresentationConfig
 import com.keepstraight.presentation.pairing.WatchPairingConfig
 import com.keepstraight.shared.application.phone.PairingUseCase
 import com.keepstraight.shared.presentation.DiscoverError
 import com.keepstraight.shared.presentation.DiscoverUiState
+import com.keepstraight.shared.repository.DeviceSyncGateway
+import com.keepstraight.shared.repository.PreferencesRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,16 +20,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
 class WatchPairingViewModel(
-    application: Application,
-) : AndroidViewModel(application) {
+    private val pairingUseCase: PairingUseCase,
+    userPreferencesRepository: PreferencesRepository,
+    private val deviceSyncGateway: DeviceSyncGateway,
+) : ViewModel() {
 
-    private val app = application as KeepStraightApp
-    private val pairingUseCase = PairingUseCase(
-        app.userPreferencesRepository,
-        app.syncManager,
-    )
-
-    val pairedWatchId: StateFlow<String?> = app.userPreferencesRepository.pairedWatchId
+    val pairedWatchId: StateFlow<String?> = userPreferencesRepository.pairedWatchId
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), null)
 
     private val _discoverState = MutableStateFlow<DiscoverUiState>(DiscoverUiState.Idle)
@@ -57,7 +53,7 @@ class WatchPairingViewModel(
     fun pairWatch(nodeId: String) {
         viewModelScope.launch {
             pairingUseCase.pairDevice(nodeId)
-            app.syncManager.refreshConnectionStatus()
+            deviceSyncGateway.refreshConnectionStatus()
         }
     }
 

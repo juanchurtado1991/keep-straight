@@ -1,57 +1,50 @@
 package com.keepstraight.presentation.settings
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.keepstraight.KeepStraightApp
 import com.keepstraight.presentation.common.PhonePresentationConfig
 import com.keepstraight.shared.application.phone.PairingUseCase
 import com.keepstraight.shared.application.phone.PhoneWatchSettingsUseCase
 import com.keepstraight.shared.model.AlertPreferences
 import com.keepstraight.shared.model.SensitivityLevel
+import com.keepstraight.shared.repository.DeviceSyncGateway
+import com.keepstraight.shared.repository.PreferencesRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
-    application: Application,
-) : AndroidViewModel(application) {
+    private val settingsUseCase: PhoneWatchSettingsUseCase,
+    private val pairingUseCase: PairingUseCase,
+    userPreferencesRepository: PreferencesRepository,
+    deviceSyncGateway: DeviceSyncGateway,
+) : ViewModel() {
 
-    private val app = application as KeepStraightApp
-    private val settingsUseCase = PhoneWatchSettingsUseCase(
-        app.userPreferencesRepository,
-        app.syncManager,
-    )
-    private val pairingUseCase = PairingUseCase(
-        app.userPreferencesRepository,
-        app.syncManager,
-    )
-
-    val pairedWatchId: StateFlow<String?> = app.userPreferencesRepository.pairedWatchId
+    val pairedWatchId: StateFlow<String?> = userPreferencesRepository.pairedWatchId
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), null)
 
-    val isConnected: StateFlow<Boolean> = app.syncManager.isConnected
+    val isConnected: StateFlow<Boolean> = deviceSyncGateway.isConnected
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), false)
 
-    val monitoringEnabled: StateFlow<Boolean> = app.userPreferencesRepository.monitoringEnabled
+    val monitoringEnabled: StateFlow<Boolean> = userPreferencesRepository.monitoringEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), true)
 
-    val alertsEnabled: StateFlow<Boolean> = app.userPreferencesRepository.alertsEnabled
+    val alertsEnabled: StateFlow<Boolean> = userPreferencesRepository.alertsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), true)
 
-    val alertPreferences: StateFlow<AlertPreferences> = app.userPreferencesRepository.alertPreferences
+    val alertPreferences: StateFlow<AlertPreferences> = userPreferencesRepository.alertPreferences
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), AlertPreferences())
 
-    val sensitivity: StateFlow<SensitivityLevel> = app.userPreferencesRepository.sensitivity
+    val sensitivity: StateFlow<SensitivityLevel> = userPreferencesRepository.sensitivity
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), SensitivityLevel.NORMAL)
 
     val slumpDurationThresholdMs: StateFlow<Long> =
-        app.userPreferencesRepository.slumpDurationThresholdMs
+        userPreferencesRepository.slumpDurationThresholdMs
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), SettingsDefaults.SLUMP_DURATION_MS)
 
     val repeatAlertIntervalMs: StateFlow<Long> =
-        app.userPreferencesRepository.repeatAlertIntervalMs
+        userPreferencesRepository.repeatAlertIntervalMs
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), SettingsDefaults.REPEAT_ALERT_MS)
 
     fun setMonitoringEnabled(enabled: Boolean) {

@@ -1,40 +1,38 @@
 package com.keepstraight.presentation.calibration
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.keepstraight.KeepStraightApp
 import com.keepstraight.shared.application.phone.CalibrationController
 import com.keepstraight.shared.application.phone.RefreshWatchConnectionUseCase
 import com.keepstraight.shared.presentation.CalibrationUiState
 import com.keepstraight.shared.presentation.common.FeatureStore
 import com.keepstraight.shared.presentation.phone.CalibrationEffect
 import com.keepstraight.shared.presentation.phone.CalibrationEvent
+import com.keepstraight.shared.repository.DeviceSyncGateway
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.keepstraight.presentation.common.PhonePresentationConfig
 
 class CalibrationViewModel(
-    application: Application,
-) : AndroidViewModel(application),
+    private val calibrationController: CalibrationController,
+    private val refreshConnection: RefreshWatchConnectionUseCase,
+    deviceSyncGateway: DeviceSyncGateway,
+) : ViewModel(),
     FeatureStore<CalibrationUiState, CalibrationEvent, CalibrationEffect> {
-
-    private val app = application as KeepStraightApp
-    private val calibrationController = CalibrationController(
-        app.userPreferencesRepository,
-        app.syncManager,
-    )
-    private val refreshConnection = RefreshWatchConnectionUseCase(app.syncManager)
 
     override val state: StateFlow<CalibrationUiState> = calibrationController.state
 
     private val _effects = MutableSharedFlow<CalibrationEffect>(extraBufferCapacity = 1)
     override val effects: SharedFlow<CalibrationEffect> = _effects.asSharedFlow()
 
-    val isConnected = app.syncManager.isConnected
+    val isConnected: StateFlow<Boolean> = deviceSyncGateway.isConnected
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), false)
 
     private var calibrationJob: Job? = null
 

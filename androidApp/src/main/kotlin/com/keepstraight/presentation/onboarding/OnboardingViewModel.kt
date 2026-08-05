@@ -1,35 +1,26 @@
 package com.keepstraight.presentation.onboarding
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.keepstraight.KeepStraightApp
 import com.keepstraight.presentation.common.PhonePresentationConfig
 import com.keepstraight.shared.application.phone.CompleteOnboardingUseCase
 import com.keepstraight.shared.application.phone.PhoneWatchSettingsUseCase
 import com.keepstraight.shared.model.SensitivityLevel
-import com.keepstraight.util.AndroidBatteryOptimizationProbe
+import com.keepstraight.shared.platform.BatteryOptimizationProbe
+import com.keepstraight.shared.repository.PreferencesRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class OnboardingViewModel(
-    application: Application,
-) : AndroidViewModel(application) {
+    private val completeOnboardingUseCase: CompleteOnboardingUseCase,
+    private val settingsUseCase: PhoneWatchSettingsUseCase,
+    userPreferencesRepository: PreferencesRepository,
+    private val batteryProbe: BatteryOptimizationProbe,
+) : ViewModel() {
 
-    private val app = application as KeepStraightApp
-    private val completeOnboardingUseCase = CompleteOnboardingUseCase(
-        app.userPreferencesRepository,
-        app.syncManager,
-    )
-    private val settingsUseCase = PhoneWatchSettingsUseCase(
-        app.userPreferencesRepository,
-        app.syncManager,
-    )
-    private val batteryProbe = AndroidBatteryOptimizationProbe(application)
-
-    val sensitivity: StateFlow<SensitivityLevel> = app.userPreferencesRepository.sensitivity
+    val sensitivity: StateFlow<SensitivityLevel> = userPreferencesRepository.sensitivity
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), SensitivityLevel.NORMAL)
 
     fun setSensitivity(level: SensitivityLevel) {

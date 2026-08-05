@@ -1,14 +1,14 @@
 package com.keepstraight.presentation.dashboard
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.keepstraight.KeepStraightApp
-import com.keepstraight.shared.application.phone.PhoneWatchSettingsUseCase
+import com.keepstraight.data.PostureHistoryRepository
 import com.keepstraight.data.model.DashboardDayStats
 import com.keepstraight.presentation.common.PhonePresentationConfig
-import com.keepstraight.presentation.dashboard.DashboardConfig
-import com.keepstraight.util.AndroidBatteryOptimizationProbe
+import com.keepstraight.shared.application.phone.PhoneWatchSettingsUseCase
+import com.keepstraight.shared.platform.BatteryOptimizationProbe
+import com.keepstraight.shared.repository.DeviceSyncGateway
+import com.keepstraight.shared.repository.PreferencesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,24 +18,21 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class DashboardViewModel(
-    application: Application,
-) : AndroidViewModel(application) {
+    private val settingsUseCase: PhoneWatchSettingsUseCase,
+    deviceSyncGateway: DeviceSyncGateway,
+    userPreferencesRepository: PreferencesRepository,
+    postureHistoryRepository: PostureHistoryRepository,
+    private val batteryProbe: BatteryOptimizationProbe,
+) : ViewModel() {
 
-    private val app = application as KeepStraightApp
-    private val settingsUseCase = PhoneWatchSettingsUseCase(
-        app.userPreferencesRepository,
-        app.syncManager,
-    )
-    private val batteryProbe = AndroidBatteryOptimizationProbe(application)
-
-    val isConnected: StateFlow<Boolean> = app.syncManager.isConnected
+    val isConnected: StateFlow<Boolean> = deviceSyncGateway.isConnected
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), false)
 
-    val pairedWatchId: StateFlow<String?> = app.userPreferencesRepository.pairedWatchId
+    val pairedWatchId: StateFlow<String?> = userPreferencesRepository.pairedWatchId
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), null)
 
     val batteryOptimizationDismissed: StateFlow<Boolean> =
-        app.userPreferencesRepository.batteryOptimizationDismissed
+        userPreferencesRepository.batteryOptimizationDismissed
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), false)
 
     private val batteryOptimizationNeeded = MutableStateFlow(batteryProbe.isOptimizationRequired())
@@ -50,8 +47,8 @@ class DashboardViewModel(
     private val workStatsFromMs =
         System.currentTimeMillis() - DashboardConfig.WORK_STATS_LOOKBACK_DAYS * DashboardConfig.MS_PER_DAY
     val dashboardDays: StateFlow<List<DashboardDayStats>> =
-        app.postureHistoryRepository.workStatsFrom(workStatsFromMs)
-            .map { stats -> app.postureHistoryRepository.dashboardDays(stats) }
+        postureHistoryRepository.workStatsFrom(workStatsFromMs)
+            .map { stats -> postureHistoryRepository.dashboardDays(stats) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), emptyList())
 
     fun refreshBatteryBanner() {
