@@ -139,7 +139,6 @@ object WirelessAdbQr {
                 AdbErrorKind.UNKNOWN,
                 titleKey = DesktopMessageKey.ADB_QR_BROWSE_FAILED_TITLE,
                 bodyKey = DesktopMessageKey.ADB_QR_BROWSE_FAILED_BODY,
-                detail = e.message,
             )
         } finally {
             runCatching { jmdns?.close() }
@@ -233,7 +232,6 @@ suspend fun AdbInstaller.pairOrConnect(
             AdbErrorKind.CONNECT_FAILED,
             titleKey = DesktopMessageKey.ADB_WATCH_DEBUG_PORT_TITLE,
             bodyKey = DesktopMessageKey.ADB_WATCH_DEBUG_PORT_BODY,
-            detail = r.detail,
         )
     }
     when (val r = connectWireless(connect.host, connect.port)) {

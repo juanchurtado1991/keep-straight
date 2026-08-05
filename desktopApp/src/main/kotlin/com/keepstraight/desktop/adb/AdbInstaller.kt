@@ -34,7 +34,6 @@ sealed class AdbResult<out T> {
         val kind: AdbErrorKind,
         val titleKey: DesktopMessageKey,
         val bodyKey: DesktopMessageKey,
-        val detail: String? = null,
     ) : AdbResult<Nothing>()
 }
 
@@ -60,7 +59,6 @@ class AdbInstaller(
                 kind = AdbErrorKind.UNKNOWN,
                 titleKey = DesktopMessageKey.ADB_PREPARE_FAILED_TITLE,
                 bodyKey = DesktopMessageKey.ADB_PREPARE_FAILED_BODY,
-                detail = e.message,
             )
         }
         return AdbResult.Err(
@@ -134,7 +132,6 @@ class AdbInstaller(
                 AdbErrorKind.PAIR_FAILED,
                 titleKey = DesktopMessageKey.ADB_PAIR_FAILED_TITLE,
                 bodyKey = DesktopMessageKey.ADB_PAIR_FAILED_BODY,
-                detail = output.takeLast(300),
             )
         }
     }
@@ -169,7 +166,6 @@ class AdbInstaller(
                 AdbErrorKind.CONNECT_FAILED,
                 titleKey = DesktopMessageKey.ADB_CONNECT_FAILED_TITLE,
                 bodyKey = DesktopMessageKey.ADB_CONNECT_FAILED_BODY,
-                detail = output.takeLast(300),
             )
         }
     }
@@ -251,7 +247,6 @@ class AdbInstaller(
                 } else {
                     DesktopMessageKey.ADB_PHONE_NOT_READY_BODY
                 },
-                detail = devices.joinToString { "${it.serial} (${it.state})" },
             )
 
         val args = listOf("-s", target.serial, "install", "-r", apk.absolutePath)
@@ -290,7 +285,6 @@ class AdbInstaller(
             } else {
                 DesktopMessageKey.ADB_INSTALL_FAILED_BODY
             },
-            detail = output.takeLast(400),
         )
     }
 

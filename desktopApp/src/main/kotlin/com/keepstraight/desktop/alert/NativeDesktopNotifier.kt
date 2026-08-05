@@ -77,7 +77,7 @@ object NativeDesktopNotifier {
                     return Result(shown = true, limited = false)
                 }
                 val directDetail = direct?.text?.trim().orEmpty()
-                if (directDetail.contains("denied", ignoreCase = true)) {
+                if (directDetail.contains(MAC_NOTIFY_DENIED_SIGNAL, ignoreCase = true)) {
                     openMacNotificationSettings()
                     val tray = trayNotifier.get()?.show(title, body) == true
                     return Result(
@@ -304,4 +304,6 @@ object NativeDesktopNotifier {
 
     private fun psString(value: String): String =
         "'" + value.replace("'", "''") + "'"
+
+    private const val MAC_NOTIFY_DENIED_SIGNAL = "denied"
 }
