@@ -81,4 +81,5 @@ dependencies {
     implementation(libs.wear.compose.material)
     implementation(libs.wear.compose.foundation)
     implementation(libs.ghost.serialization)
+    implementation(libs.koin.android)
 }
