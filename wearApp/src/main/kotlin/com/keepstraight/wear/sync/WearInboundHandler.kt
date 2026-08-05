@@ -41,6 +41,8 @@ class WearInboundHandler(
     DataClient.OnDataChangedListener {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val recentDeliveryKeys = ArrayDeque<String>()
+    private val deliveryLock = Any()
     private var lastCalibrateRequestAt = 0L
     private var lastDesktopAlertAt = 0L
 
@@ -128,6 +130,10 @@ class WearInboundHandler(
     }
 
     fun handlePath(path: String, payload: ByteArray, sourceNodeId: String) {
+        if (!acceptDelivery(path, payload, sourceNodeId)) {
+            Log.i(TAG, "Skipping duplicate $path from $sourceNodeId")
+            return
+        }
         val session = app.monitoringSession
         Log.i(TAG, "Message $path from $sourceNodeId")
 
@@ -243,11 +249,24 @@ class WearInboundHandler(
         }
     }
 
+    private fun acceptDelivery(path: String, payload: ByteArray, sourceNodeId: String): Boolean {
+        val key = "$path|$sourceNodeId|${payload.contentHashCode()}"
+        synchronized(deliveryLock) {
+            if (recentDeliveryKeys.contains(key)) return false
+            recentDeliveryKeys.addLast(key)
+            while (recentDeliveryKeys.size > MAX_RECENT_DELIVERIES) {
+                recentDeliveryKeys.removeFirst()
+            }
+            return true
+        }
+    }
+
     private companion object {
         const val TAG = "KeepStraightWear"
         const val DEDUP_MS = 2_000L
         const val WAKE_MS = 20_000L
         const val ALERT_WAKE_MS = 3_000L
         const val CAPABILITY_DUPLICATE = 4006
+        const val MAX_RECENT_DELIVERIES = 32
     }
 }

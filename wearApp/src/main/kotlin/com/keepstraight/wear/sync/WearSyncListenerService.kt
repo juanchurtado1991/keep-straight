@@ -14,6 +14,7 @@ class WearSyncListenerService : WearableListenerService() {
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         Log.i(TAG, "Service woke for ${messageEvent.path}")
+        // WearInboundHandler dedupes when both this service and the app listener fire.
         val app = application as KeepStraightWearApp
         app.inboundHandler.handlePath(
             path = messageEvent.path,
