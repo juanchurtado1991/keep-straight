@@ -25,6 +25,7 @@ import com.keepstraight.wear.sync.PendingSyncQueue
 import com.keepstraight.wear.sync.WearMessageSender
 import com.ghost.serialization.Ghost
 import com.keepstraight.shared.model.PostureEvent
+import com.keepstraight.shared.model.PostureEventBatch
 import com.keepstraight.shared.sync.SyncPaths
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -207,13 +208,14 @@ class PostureMonitoringService : Service(), SensorEventListener {
     }
 
     private suspend fun trySendPendingEvents() {
-        val batchBytes = pendingSyncQueue.encodeBatchBytes() ?: return
+        val batch = pendingSyncQueue.takeBatch() ?: return
+        val batchBytes = Ghost.encodeToBytes(PostureEventBatch(events = batch.events))
         val sent = messageSender.sendToPhone(SyncPaths.EVENTS_BATCH, batchBytes)
         if (sent) {
-            pendingSyncQueue.clear()
             connectionRetryManager.cancelRetryCycle()
             (application as KeepStraightWearApp).monitoringSession.setPhoneRetryActive(false)
         } else {
+            pendingSyncQueue.reenqueue(batch)
             startConnectionRetryIfNeeded()
         }
     }

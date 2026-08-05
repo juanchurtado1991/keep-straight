@@ -19,26 +19,30 @@ class PendingSyncQueue(context: Context) {
         }
     }
 
-    fun dequeueAll(): List<PostureEvent> {
+    fun reenqueue(batch: PostureEventBatch) {
+        if (batch.events.isEmpty()) return
         synchronized(lock) {
-            if (!queueFile.exists() || queueFile.length() == 0L) return emptyList()
-
-            val bytes = queueFile.readBytes()
-            val events = mutableListOf<PostureEvent>()
-            var offset = 0
-            while (offset + LENGTH_BYTES <= bytes.size) {
-                val length = ByteBuffer.wrap(bytes, offset, LENGTH_BYTES).int
-                offset += LENGTH_BYTES
-                if (length <= 0 || offset + length > bytes.size) break
-                val eventBytes = bytes.copyOfRange(offset, offset + length)
-                offset += length
-                events.add(Ghost.deserialize(eventBytes))
+            for (event in batch.events) {
+                val payload = Ghost.encodeToBytes(event)
+                queueFile.appendBytes(lengthPrefix(payload) + payload)
             }
-            return events
         }
     }
 
-    fun toBatch(): PostureEventBatch = PostureEventBatch(events = dequeueAll())
+    /** Atomically reads all queued events and clears the file before returning. */
+    fun takeBatch(): PostureEventBatch? {
+        synchronized(lock) {
+            val events = readEventsLocked()
+            if (events.isEmpty()) return null
+            queueFile.writeBytes(ByteArray(0))
+            return PostureEventBatch(events = events)
+        }
+    }
+
+    fun takeBatchBytes(): ByteArray? {
+        val batch = takeBatch() ?: return null
+        return Ghost.encodeToBytes(batch)
+    }
 
     fun clear() {
         synchronized(lock) {
@@ -54,10 +58,21 @@ class PendingSyncQueue(context: Context) {
         }
     }
 
-    fun encodeBatchBytes(): ByteArray? {
-        val events = dequeueAll()
-        if (events.isEmpty()) return null
-        return Ghost.encodeToBytes(PostureEventBatch(events = events))
+    private fun readEventsLocked(): List<PostureEvent> {
+        if (!queueFile.exists() || queueFile.length() == 0L) return emptyList()
+
+        val bytes = queueFile.readBytes()
+        val events = mutableListOf<PostureEvent>()
+        var offset = 0
+        while (offset + LENGTH_BYTES <= bytes.size) {
+            val length = ByteBuffer.wrap(bytes, offset, LENGTH_BYTES).int
+            offset += LENGTH_BYTES
+            if (length <= 0 || offset + length > bytes.size) break
+            val eventBytes = bytes.copyOfRange(offset, offset + length)
+            offset += length
+            events.add(Ghost.deserialize(eventBytes))
+        }
+        return events
     }
 
     private fun lengthPrefix(payload: ByteArray): ByteArray =
