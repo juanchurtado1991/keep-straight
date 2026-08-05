@@ -41,6 +41,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.prefs.Preferences
 
@@ -61,7 +63,9 @@ class DesktopSessionController(
     private var settingsSyncJob: Job? = null
     private var workSampleSyncJob: Job? = null
     private var pairAssist: DesktopPairAssistServer? = null
+    private var pairAssistStopJob: Job? = null
     private val visionLock = Any()
+    private val pairingMutex = Mutex()
     private var lastTargetFps: Int = 5
     private var modelBytesLoaded: Boolean = false
     private var phoneAlertsEnabled: Boolean = true
@@ -167,8 +171,10 @@ class DesktopSessionController(
 
     init {
         session.onAlert = { event ->
-            alerter.alert(event)
-            scope.launch { forwardAlert(event) }
+            scope.launch(Dispatchers.IO) {
+                alerter.alert(event)
+                forwardAlert(event)
+            }
         }
         session.onCalibrationSaved = { cal ->
             CalibrationStore.save(prefs, cal)
@@ -177,14 +183,8 @@ class DesktopSessionController(
         applyLocalSettings()
         CalibrationStore.load(prefs)?.let { session.setCalibration(it) }
 
-        // Loading the pose model and enumerating webcams takes seconds, and the controller is
-        // built during composition — doing it inline would hang the window before the first frame.
-        scope.launch {
-            ensurePose()
-            ensureCamera()
-            if (_showPreview.value) {
-                startCameraPipeline()
-            }
+        if (prefs.getBoolean("camera_consent_accepted", false)) {
+            warmUpVision()
         }
         if (bridge.isConfigured) {
             startSettingsSync()
@@ -201,6 +201,22 @@ class DesktopSessionController(
             slumpDurationThresholdMs = prefs.getLong("slump_duration_ms", 30_000L),
             repeatAlertIntervalMs = prefs.getLong("repeat_alert_ms", 5_000L),
         )
+    }
+
+    fun onCameraConsentGranted() {
+        prefs.putBoolean("camera_consent_accepted", true)
+        warmUpVision()
+    }
+
+    private fun warmUpVision() {
+        // Loading the pose model and enumerating webcams takes seconds — keep off the UI thread.
+        scope.launch {
+            ensurePose()
+            ensureCamera()
+            if (_showPreview.value) {
+                startCameraPipeline()
+            }
+        }
     }
 
     fun handleStatusAction(action: DesktopStatusAction) {
@@ -314,7 +330,7 @@ class DesktopSessionController(
     fun enterCalibrationUi() {
         _calibrationUiActive.value = true
         ensureModelReady()
-        startCameraPipeline()
+        restartCameraPipeline()
     }
 
     fun exitCalibrationUi() {
@@ -456,7 +472,7 @@ class DesktopSessionController(
         _pairMessage.value = "Getting a code ready…"
         _qrPairingActive.value = true
         scope.launch {
-            previous?.let { withContext(Dispatchers.IO) { it.stop() } }
+            awaitPairAssistStopped(previous)
             val assist = DesktopPairAssistServer { hello -> handlePhoneHello(hello) }
             val offer = withContext(Dispatchers.IO) { assist.start() }
             pairAssist = assist
@@ -470,12 +486,20 @@ class DesktopSessionController(
         pairAssist = null
         _pairQrBitmap.value = null
         _qrPairingActive.value = false
-        assist?.let { scope.launch { withContext(Dispatchers.IO) { it.stop() } } }
+        pairAssistStopJob = scope.launch {
+            withContext(Dispatchers.IO) { assist?.stop() }
+        }
+    }
+
+    private suspend fun awaitPairAssistStopped(previous: DesktopPairAssistServer?) {
+        pairAssistStopJob?.join()
+        pairAssistStopJob = null
+        previous?.let { withContext(Dispatchers.IO) { it.stop() } }
     }
 
     private suspend fun handlePhoneHello(
         hello: com.keepstraight.shared.bridge.PhoneHelloRequest,
-    ): com.keepstraight.shared.bridge.PhoneHelloResponse {
+    ): com.keepstraight.shared.bridge.PhoneHelloResponse = pairingMutex.withLock {
         var lastError = "Pairing failed"
         for (host in hello.phoneHosts) {
             val result = bridge.pair(host, hello.phonePort, hello.code)
@@ -490,7 +514,7 @@ class DesktopSessionController(
                     kotlinx.coroutines.delay(150)
                     cancelPairQr()
                 }
-                return com.keepstraight.shared.bridge.PhoneHelloResponse(
+                return@withLock com.keepstraight.shared.bridge.PhoneHelloResponse(
                     ok = true,
                     message = "Paired",
                 )
@@ -499,7 +523,7 @@ class DesktopSessionController(
         }
         session.setIssue(DesktopIssue.BridgePairFailed(lastError))
         _pairMessage.value = lastError
-        return com.keepstraight.shared.bridge.PhoneHelloResponse(ok = false, message = lastError)
+        return@withLock com.keepstraight.shared.bridge.PhoneHelloResponse(ok = false, message = lastError)
     }
 
     private suspend fun completePairFromPhone(
@@ -569,17 +593,20 @@ class DesktopSessionController(
 
     // The warm-up runs in the background while the UI can still trigger these, so both entry
     // points share a lock to avoid creating two cameras or two ONNX sessions.
-    private fun ensureCamera() = synchronized(visionLock) {
-        if (camera == null) {
-            camera = VisionPlatform.createCameraFrameSource()
-            val saved = prefs.get("camera_id", null)
-            if (saved != null) {
-                (camera as? JvmCameraFrameSource)?.selectDevice(saved, lastTargetFps)
-                    ?: camera?.selectDevice(saved)
+    private fun ensureCamera() {
+        synchronized(visionLock) {
+            if (!prefs.getBoolean("camera_consent_accepted", false)) return
+            if (camera == null) {
+                camera = VisionPlatform.createCameraFrameSource()
+                val saved = prefs.get("camera_id", null)
+                if (saved != null) {
+                    (camera as? JvmCameraFrameSource)?.selectDevice(saved, lastTargetFps)
+                        ?: camera?.selectDevice(saved)
+                }
+                // Surface empty-device / permission state immediately on Mac.
+                camera?.refreshDevices()
+                camera?.lastError?.value?.let { session.onCameraError(it) }
             }
-            // Surface empty-device / permission state immediately on Mac.
-            camera?.refreshDevices()
-            camera?.lastError?.value?.let { session.onCameraError(it) }
         }
     }
 

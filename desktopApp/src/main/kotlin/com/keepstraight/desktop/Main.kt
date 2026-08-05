@@ -104,6 +104,7 @@ fun main() {
                         onAcceptCamera = {
                             prefs.putBoolean("camera_consent_accepted", true)
                             consentAccepted = true
+                            controller.onCameraConsentGranted()
                         },
                         onDeclineCamera = quitApp,
                         onFinished = {
