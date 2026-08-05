@@ -50,6 +50,26 @@ compose.desktop {
                 bundleID = "com.keepstraight.desktop"
                 iconFile.set(project.file("icons/icon.icns"))
                 dockName = "KeepStraight"
+                entitlementsFile.set(project.file("macos/entitlements.plist"))
+                runtimeEntitlementsFile.set(project.file("macos/runtime-entitlements.plist"))
+                signing {
+                    sign.set(
+                        providers.gradleProperty("compose.desktop.mac.sign")
+                            .map(String::toBoolean)
+                            .orElse(false),
+                    )
+                    identity.set(
+                        providers.gradleProperty("compose.desktop.mac.signing.identity").orElse(""),
+                    )
+                    providers.gradleProperty("compose.desktop.mac.signing.keychain").orNull?.let { path ->
+                        keychain.set(file(path).absolutePath)
+                    }
+                }
+                notarization {
+                    appleID.set(providers.gradleProperty("compose.desktop.mac.notarization.appleID"))
+                    password.set(providers.gradleProperty("compose.desktop.mac.notarization.password"))
+                    teamID.set(providers.gradleProperty("compose.desktop.mac.notarization.teamID"))
+                }
                 infoPlist {
                     extraKeysRawXml = """
                         <key>NSCameraUsageDescription</key>
