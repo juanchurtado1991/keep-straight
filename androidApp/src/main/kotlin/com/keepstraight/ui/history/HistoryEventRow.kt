@@ -28,7 +28,7 @@ import java.util.Date
 
 @Composable
 fun HistoryEventRow(event: PostureEventEntity) {
-    val timeFormat = SimpleDateFormat(HistoryDateConfig.TIME_PATTERN, HistoryDateConfig.englishLocale)
+    val timeFormat = SimpleDateFormat(HistoryDateConfig.TIME_PATTERN, HistoryDateConfig.displayLocale)
     val type = runCatching { PostureEventType.valueOf(event.eventType) }.getOrNull()
     val eventLabel = when (type) {
         PostureEventType.SLUMP_DETECTED -> stringResource(R.string.event_slump)

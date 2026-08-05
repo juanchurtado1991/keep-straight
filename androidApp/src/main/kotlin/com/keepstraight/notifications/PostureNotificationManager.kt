@@ -34,10 +34,11 @@ class PostureNotificationManager(
         )
 
         val minutes = durationSeconds / 60
-        val seconds = durationSeconds % 60
-        val durationText = when {
-            minutes > 0 -> "${minutes}m ${seconds}s"
-            else -> "${seconds}s"
+        val remaining = durationSeconds % 60
+        val durationText = if (minutes > 0) {
+            context.getString(R.string.duration_minutes_seconds, minutes, remaining)
+        } else {
+            context.getString(R.string.duration_seconds, remaining)
         }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_POSTURE)

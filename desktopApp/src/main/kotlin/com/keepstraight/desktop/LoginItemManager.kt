@@ -51,11 +51,10 @@ object LoginItemManager {
                 enabled -> Result(false, DesktopMessageKey.LOGIN_REGISTER_FAILED)
                 else -> Result(false, DesktopMessageKey.LOGIN_DISABLED)
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Result(
                 enabled = isEnabled(),
                 messageKey = DesktopMessageKey.LOGIN_CHANGE_FAILED,
-                override = e.message,
             )
         }
     }

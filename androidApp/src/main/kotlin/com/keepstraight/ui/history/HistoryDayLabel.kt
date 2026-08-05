@@ -20,7 +20,7 @@ fun historyDayLabel(startOfDay: Long, timestamp: Long): String {
         yesterdayStart -> stringResource(R.string.history_yesterday)
         else -> SimpleDateFormat(
             HistoryDateConfig.DAY_PATTERN,
-            HistoryDateConfig.englishLocale,
+            HistoryDateConfig.displayLocale,
         ).format(Date(timestamp))
     }
 }
