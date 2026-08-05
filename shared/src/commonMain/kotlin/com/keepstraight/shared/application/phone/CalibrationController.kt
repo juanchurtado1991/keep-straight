@@ -1,11 +1,13 @@
 package com.keepstraight.shared.application.phone
 
-import com.keepstraight.shared.domain.PostureScore
 import com.keepstraight.shared.model.CalibrationCaptureResult
 import com.keepstraight.shared.model.PostureCalibrationConfig
 import com.keepstraight.shared.presentation.CalibrationError
 import com.keepstraight.shared.presentation.CalibrationPhase
 import com.keepstraight.shared.presentation.CalibrationUiState
+import com.keepstraight.shared.presentation.phone.CalibrationReduceAction
+import com.keepstraight.shared.presentation.phone.CalibrationReducer
+import com.keepstraight.shared.presentation.phone.CalibrationReducerState
 import com.keepstraight.shared.repository.DeviceSyncGateway
 import com.keepstraight.shared.repository.PreferencesRepository
 import kotlinx.coroutines.delay
@@ -24,92 +26,75 @@ class CalibrationController(
 
     val calibrationResult = deviceSyncGateway.calibrationResult
 
-    private var goodPitch: Float? = null
-    private var goodRoll: Float? = null
+    private var reducerState = CalibrationReducerState()
+
+    private fun apply(action: CalibrationReduceAction) {
+        reducerState = CalibrationReducer.reduce(reducerState, action)
+        _state.value = reducerState.ui
+    }
 
     suspend fun start(isConnected: Boolean) {
-        goodPitch = null
-        goodRoll = null
-        if (!isConnected) {
-            _state.value = CalibrationUiState.Error(CalibrationError.NOT_CONNECTED)
-            return
-        }
+        apply(CalibrationReduceAction.Start(isConnected))
+        if (!isConnected) return
         runCapturePhase(CalibrationPhase.GOOD)
     }
 
     /** After good pose is captured, user confirms they are slouching. */
     suspend fun continueWithSlouch(isConnected: Boolean) {
-        if (!isConnected) {
-            _state.value = CalibrationUiState.Error(CalibrationError.NOT_CONNECTED)
-            return
-        }
-        if (goodPitch == null || goodRoll == null) {
-            _state.value = CalibrationUiState.Error(CalibrationError.SAVE_FAILED)
-            return
-        }
+        apply(CalibrationReduceAction.ContinueSlouch(isConnected))
+        if (!isConnected) return
+        if (reducerState.goodPitch == null || reducerState.goodRoll == null) return
         runCapturePhase(CalibrationPhase.SLOUCH)
     }
 
     fun reset() {
-        goodPitch = null
-        goodRoll = null
-        _state.value = CalibrationUiState.Idle
+        apply(CalibrationReduceAction.Reset)
     }
 
     private suspend fun runCapturePhase(phase: CalibrationPhase) {
-        for (seconds in COUNTDOWN_SECONDS downTo 1) {
-            _state.value = CalibrationUiState.Countdown(seconds, phase)
+        for (seconds in CalibrationReducer.COUNTDOWN_SECONDS downTo 1) {
+            apply(CalibrationReduceAction.TickCountdown(seconds, phase))
             delay(COUNTDOWN_STEP_MS)
         }
 
-        _state.value = CalibrationUiState.Capturing(phase)
+        apply(CalibrationReduceAction.BeginCapture(phase))
 
         val sendResult = withTimeoutOrNull(SEND_TIMEOUT_MS) {
             deviceSyncGateway.requestCalibrationCapture()
         }
         when {
             sendResult == null -> {
-                _state.value = CalibrationUiState.Error(CalibrationError.SEND_TIMEOUT)
+                apply(CalibrationReduceAction.CaptureFailed(CalibrationError.SEND_TIMEOUT))
                 return
             }
             sendResult.isFailure -> {
-                _state.value = CalibrationUiState.Error(CalibrationError.SEND_FAILED)
+                apply(CalibrationReduceAction.CaptureFailed(CalibrationError.SEND_FAILED))
                 return
             }
         }
 
         val result = deviceSyncGateway.awaitCalibrationResult(CAPTURE_TIMEOUT_MS)
         if (result == null) {
-            _state.value = CalibrationUiState.Error(CalibrationError.WATCH_NO_RESPONSE)
+            apply(CalibrationReduceAction.CaptureFailed(CalibrationError.WATCH_NO_RESPONSE))
             return
         }
 
         when (phase) {
-            CalibrationPhase.GOOD -> {
-                goodPitch = result.basePitch
-                goodRoll = result.baseRoll
-                _state.value = CalibrationUiState.PromptSlouch
-            }
+            CalibrationPhase.GOOD -> apply(
+                CalibrationReduceAction.CaptureSucceeded(result, CalibrationPhase.GOOD),
+            )
             CalibrationPhase.SLOUCH -> persistBothPoses(result)
         }
     }
 
     private suspend fun persistBothPoses(slouch: CalibrationCaptureResult) {
-        val goodP = goodPitch
-        val goodR = goodRoll
-        if (goodP == null || goodR == null) {
-            _state.value = CalibrationUiState.Error(CalibrationError.SAVE_FAILED)
-            return
-        }
+        apply(CalibrationReduceAction.ValidateSlouchCapture(slouch))
+        if (reducerState.ui is CalibrationUiState.Error) return
 
-        val separation = PostureScore.distanceDeg(
-            goodP,
-            goodR,
-            slouch.basePitch,
-            slouch.baseRoll,
-        )
-        if (separation < PostureScore.MIN_REFERENCE_SEPARATION_DEG) {
-            _state.value = CalibrationUiState.Error(CalibrationError.SLUMP_TOO_SIMILAR)
+        val goodP = reducerState.goodPitch
+        val goodR = reducerState.goodRoll
+        if (goodP == null || goodR == null) {
+            apply(CalibrationReduceAction.PersistFailed(CalibrationError.SAVE_FAILED))
             return
         }
 
@@ -129,16 +114,13 @@ class CalibrationController(
                     slumpRoll = slouch.baseRoll,
                 ),
             )
-            goodPitch = null
-            goodRoll = null
-            _state.value = CalibrationUiState.Success
+            apply(CalibrationReduceAction.PersistSucceeded)
         } catch (_: Exception) {
-            _state.value = CalibrationUiState.Error(CalibrationError.SAVE_FAILED)
+            apply(CalibrationReduceAction.PersistFailed(CalibrationError.SAVE_FAILED))
         }
     }
 
     private companion object {
-        const val COUNTDOWN_SECONDS = 3
         const val COUNTDOWN_STEP_MS = 1_000L
         const val SEND_TIMEOUT_MS = 8_000L
         const val CAPTURE_TIMEOUT_MS = 20_000L
