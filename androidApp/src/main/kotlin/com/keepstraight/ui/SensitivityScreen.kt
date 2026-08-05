@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.keepstraight.R
 import com.keepstraight.data.UserPreferencesRepository
 import com.keepstraight.shared.model.SensitivityLevel
+import com.keepstraight.ui.common.formatSensitivityDurationLabel
 import com.keepstraight.ui.components.KeepStraightTopBar
 import com.keepstraight.ui.theme.PhoneCard
 import com.keepstraight.ui.theme.PhoneDimens
@@ -104,7 +105,7 @@ fun SensitivityScreen(
                 Text(
                     text = stringResource(
                         R.string.sensitivity_slump_delay_value,
-                        formatDurationLabel(slumpSeconds.roundToInt()),
+                        formatSensitivityDurationLabel(slumpSeconds.roundToInt()),
                     ),
                     style = MaterialTheme.typography.bodyLarge,
                 )
@@ -177,10 +178,4 @@ private fun snapSlumpSeconds(raw: Float): Float {
         else -> 300
     }
     return snapped.toFloat()
-}
-
-private fun formatDurationLabel(seconds: Int): String = when {
-    seconds < 60 -> "${seconds}s"
-    seconds % 60 == 0 -> "${seconds / 60} min"
-    else -> "${seconds / 60}m ${seconds % 60}s"
 }

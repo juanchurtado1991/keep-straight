@@ -203,6 +203,22 @@
     <string name="notification_desktop_bridge_paired">Listening for desktop posture alerts</string>
     <string name="notification_desktop_bridge_ready">Ready to pair with desktop</string>
 
+    <!-- Duration formatting -->
+    <string name="duration_seconds">%1$ds</string>
+    <string name="duration_minutes_seconds">%1$dm %2$ds</string>
+    <string name="duration_hours_minutes">%1$dh %2$dm</string>
+    <string name="duration_minutes_only">%1$dm</string>
+    <string name="duration_minutes_long">%1$d min</string>
+
+    <!-- LAN protocol (desktop companion) -->
+    <string name="lan_pair_invalid_code">Invalid code</string>
+    <string name="lan_pair_code_expired">Code expired</string>
+    <string name="lan_pair_too_many_attempts">Too many attempts</string>
+    <string name="lan_pair_success">Paired</string>
+    <string name="lan_pair_update_app">Update KeepStraight</string>
+    <string name="lan_http_unauthorized">unauthorized</string>
+    <string name="lan_http_bad_request">bad request</string>
+
     <!-- Common -->
     <string name="action_back">Back</string>
     <string name="action_save">Save</string>

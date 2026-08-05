@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import com.keepstraight.R
 import com.keepstraight.data.local.PostureEventEntity
 import com.keepstraight.shared.model.PostureEventType
+import com.keepstraight.ui.common.formatEventDuration
 import com.keepstraight.ui.theme.PhoneDimens
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -42,7 +43,7 @@ fun HistoryEventRow(event: PostureEventEntity) {
         PostureEventType.CALIBRATED -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    val durationText = formatDuration(event.durationSeconds)
+    val durationText = formatEventDuration(event.durationSeconds)
 
     Row(
         modifier = Modifier.fillMaxWidth(),

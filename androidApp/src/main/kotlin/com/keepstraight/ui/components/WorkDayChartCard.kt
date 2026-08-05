@@ -28,6 +28,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import com.keepstraight.ui.common.formatChartDuration
 import kotlin.math.max
 
 @Composable
@@ -66,8 +67,8 @@ fun WorkDayChartCard(
                 text = stringResource(
                     if (day.inProgress) R.string.dashboard_day_summary_so_far
                     else R.string.dashboard_day_summary,
-                    formatDuration(day.seatedSeconds),
-                    formatDuration(day.goodPostureSeconds),
+                    formatChartDuration(day.seatedSeconds),
+                    formatChartDuration(day.goodPostureSeconds),
                     (day.goodRatio * 100).toInt(),
                 ),
                 style = MaterialTheme.typography.bodyMedium,
@@ -174,14 +175,5 @@ private fun HourBarsChart(
                 )
             }
         }
-    }
-}
-
-fun formatDuration(totalSeconds: Int): String {
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    return when {
-        hours > 0 -> "${hours}h ${minutes}m"
-        else -> "${minutes}m"
     }
 }
