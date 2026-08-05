@@ -11,6 +11,7 @@ import com.keepstraight.shared.repository.DeviceSyncGateway
 import com.keepstraight.shared.repository.PreferencesRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,8 +35,9 @@ class WatchPairingViewModel(
     private var discoverJob: Job? = null
 
     fun refreshWatchNodes() {
-        discoverJob?.cancel()
+        val previous = discoverJob
         discoverJob = viewModelScope.launch {
+            previous?.cancelAndJoin()
             _discoverState.value = DiscoverUiState.Loading
             try {
                 val nodes = withTimeout(WatchPairingConfig.DISCOVER_TIMEOUT_MS) {

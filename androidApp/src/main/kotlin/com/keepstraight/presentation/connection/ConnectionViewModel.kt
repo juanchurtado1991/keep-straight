@@ -12,6 +12,7 @@ import com.keepstraight.shared.repository.PreferencesRepository
 import com.keepstraight.shared.repository.deviceSyncFailureReason
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -42,8 +43,9 @@ class ConnectionViewModel(
 
     fun reconnectWatch() {
         if (_reconnectState.value is ReconnectUiState.InProgress) return
-        reconnectJob?.cancel()
+        val previous = reconnectJob
         reconnectJob = viewModelScope.launch {
+            previous?.cancelAndJoin()
             _reconnectState.value = ReconnectUiState.InProgress
             val result = try {
                 withTimeout(ConnectionConfig.RECONNECT_TIMEOUT_MS) {
