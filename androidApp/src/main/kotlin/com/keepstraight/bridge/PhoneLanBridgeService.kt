@@ -42,7 +42,9 @@ class PhoneLanBridgeService : Service() {
     }
 
     override fun onDestroy() {
-        (application as? KeepStraightApp)?.lanIngestServer?.onPairingStateChanged = null
+        val app = application as? KeepStraightApp
+        app?.lanIngestServer?.onPairingStateChanged = null
+        app?.lanIngestServer?.stop()
         super.onDestroy()
     }
 
