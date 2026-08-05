@@ -1,5 +1,6 @@
 package com.keepstraight.shared.bridge
 
+import com.ghost.serialization.Ghost
 import com.keepstraight.shared.model.SensitivityLevel
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,55 +9,51 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class DesktopLanJsonTest {
+class DesktopLanWireTest {
     @Test
     fun ping_roundTrip() {
         val ping = DesktopLanPingResponse(ok = true, protocolVersion = DesktopLanProtocol.VERSION)
-        val parsed = DesktopLanJson.parsePing(DesktopLanJson.pingToJson(ping))
-        assertEquals(ping, parsed)
+        assertEquals(ping, roundTrip(ping))
     }
 
     @Test
     fun ping_parsesLegacyWireJson() {
-        val parsed = DesktopLanJson.parsePing("""{"ok":true,"protocolVersion":1}""")
+        val parsed = parseWire<DesktopLanPingResponse>("""{"ok":true,"protocolVersion":1}""")
         assertEquals(DesktopLanPingResponse(ok = true, protocolVersion = 1), parsed)
     }
 
     @Test
     fun ack_roundTrip() {
-        val parsed = DesktopLanJson.parseAck(DesktopLanJson.ackToJson())
-        assertEquals(DesktopLanAckResponse(), parsed)
+        assertEquals(DesktopLanAckResponse(), roundTrip(DesktopLanAckResponse()))
     }
 
     @Test
     fun ack_parsesLegacyWireJson() {
-        val parsed = DesktopLanJson.parseAck("""{"ok":true}""")
+        val parsed = parseWire<DesktopLanAckResponse>("""{"ok":true}""")
         assertEquals(DesktopLanAckResponse(), parsed)
     }
 
     @Test
     fun pairRequest_roundTrip() {
         val req = DesktopPairRequest(code = "123456", protocolVersion = DesktopLanProtocol.VERSION)
-        val parsed = DesktopLanJson.parsePairRequest(DesktopLanJson.pairRequestToJson(req))
-        assertEquals(req, parsed)
+        assertEquals(req, roundTrip(req))
     }
 
     @Test
     fun pairRequest_parsesLegacyWireJson() {
-        val parsed = DesktopLanJson.parsePairRequest("""{"code":"123456","protocolVersion":1}""")
+        val parsed = parseWire<DesktopPairRequest>("""{"code":"123456","protocolVersion":1}""")
         assertEquals(DesktopPairRequest(code = "123456", protocolVersion = 1), parsed)
     }
 
     @Test
     fun pairResponse_success_roundTrip() {
         val res = DesktopPairResponse(ok = true, token = "tok-abc")
-        val parsed = DesktopLanJson.parsePairResponse(DesktopLanJson.pairResponseToJson(res))
-        assertEquals(res, parsed)
+        assertEquals(res, roundTrip(res))
     }
 
     @Test
     fun pairResponse_success_parsesLegacySpacedOk() {
-        val parsed = DesktopLanJson.parsePairResponse("""{"ok": true,"token":"abc"}""")
+        val parsed = parseWire<DesktopPairResponse>("""{"ok": true,"token":"abc"}""")
         assertNotNull(parsed)
         assertTrue(parsed.ok)
         assertEquals("abc", parsed.token)
@@ -68,14 +65,13 @@ class DesktopLanJsonTest {
             ok = false,
             errorCode = BridgeProtocolError.INVALID_CODE,
         )
-        val parsed = DesktopLanJson.parsePairResponse(DesktopLanJson.pairResponseToJson(res))
-        assertEquals(res, parsed)
+        assertEquals(res, roundTrip(res))
     }
 
     @Test
     fun pairResponse_rejectsInvalidPayload() {
-        assertNull(DesktopLanJson.parsePairResponse("not json"))
-        assertNull(DesktopLanJson.parsePairResponse("""{"token":"only"}"""))
+        assertNull(parseWire<DesktopPairResponse>("not json"))
+        assertNull(parseWire<DesktopPairResponse>("""{"token":"only"}"""))
     }
 
     @Test
@@ -87,15 +83,14 @@ class DesktopLanJsonTest {
             alertsEnabled = false,
             protocolVersion = DesktopLanProtocol.VERSION,
         )
-        val parsed = DesktopLanJson.parseSettings(DesktopLanJson.settingsToJson(settings))
-        assertEquals(settings, parsed)
+        assertEquals(settings, roundTrip(settings))
     }
 
     @Test
     fun settings_parsesLegacyWireJson() {
         val json =
             """{"sensitivity":"NORMAL","slumpDurationThresholdMs":30000,"repeatAlertIntervalMs":5000,"alertsEnabled":true,"protocolVersion":1}"""
-        val parsed = DesktopLanJson.parseSettings(json)
+        val parsed = parseWire<DesktopPhoneSettings>(json)
         assertNotNull(parsed)
         assertEquals(SensitivityLevel.NORMAL, parsed.sensitivity)
         assertEquals(30_000L, parsed.slumpDurationThresholdMs)
@@ -110,15 +105,14 @@ class DesktopLanJsonTest {
             timestampMs = 1_700_000_000_000L,
             protocolVersion = DesktopLanProtocol.VERSION,
         )
-        val parsed = DesktopLanJson.parseEvent(DesktopLanJson.eventToJson(event))
-        assertEquals(event, parsed)
+        assertEquals(event, roundTrip(event))
     }
 
     @Test
     fun slumpEvent_parsesLegacyFullWireJson() {
         val json =
             """{"type":"WORK_SAMPLE","slumpScore":0.0,"presence":"SITTING","timestampMs":99,"protocolVersion":1,"seatedDeltaSec":10,"goodPostureDeltaSec":7}"""
-        val parsed = DesktopLanJson.parseEvent(json)
+        val parsed = parseWire<DesktopSlumpEvent>(json)
         assertEquals(
             DesktopSlumpEvent(
                 type = DesktopSlumpEventType.WORK_SAMPLE,
@@ -140,21 +134,20 @@ class DesktopLanJsonTest {
             phonePort = 8742,
             protocolVersion = DesktopLanProtocol.VERSION,
         )
-        val parsed = DesktopLanJson.parsePhoneHello(DesktopLanJson.phoneHelloToJson(hello))
-        assertEquals(hello, parsed)
+        assertEquals(hello, roundTrip(hello))
     }
 
     @Test
     fun phoneHelloResponse_roundTrip() {
         val ok = PhoneHelloResponse(ok = true)
         val fail = PhoneHelloResponse(ok = false, errorCode = BridgeProtocolError.PAIRING_FAILED)
-        assertEquals(ok, DesktopLanJson.parsePhoneHelloResponse(DesktopLanJson.phoneHelloResponseToJson(ok)))
-        assertEquals(fail, DesktopLanJson.parsePhoneHelloResponse(DesktopLanJson.phoneHelloResponseToJson(fail)))
+        assertEquals(ok, roundTrip(ok))
+        assertEquals(fail, roundTrip(fail))
     }
 
     @Test
     fun phoneHelloResponse_parsesLegacySpacedOk() {
-        val parsed = DesktopLanJson.parsePhoneHelloResponse("""{"ok": true}""")
+        val parsed = parseWire<PhoneHelloResponse>("""{"ok": true}""")
         assertNotNull(parsed)
         assertTrue(parsed.ok)
         assertNull(parsed.errorCode)
@@ -162,16 +155,24 @@ class DesktopLanJsonTest {
 
     @Test
     fun pairResponseJson_containsRequiredFields() {
-        val json = DesktopLanJson.pairResponseToJson(
-            DesktopPairResponse(ok = true, token = "secret"),
-        )
+        val json = Ghost.encodeToString(DesktopPairResponse(ok = true, token = "secret"))
         assertTrue(json.contains("\"ok\""))
         assertTrue(json.contains("secret"))
     }
 
     @Test
     fun pairFailureJson_omitsNullErrorCodeOnSuccess() {
-        val json = DesktopLanJson.pairResponseToJson(DesktopPairResponse(ok = true, token = "x"))
+        val json = Ghost.encodeToString(DesktopPairResponse(ok = true, token = "x"))
         assertFalse(json.contains("errorCode"))
     }
+
+    private inline fun <reified T> parseWire(json: String): T? =
+        try {
+            Ghost.deserialize(json.trim())
+        } catch (_: Exception) {
+            null
+        }
+
+    private inline fun <reified T : Any> roundTrip(value: T): T? =
+        parseWire(Ghost.encodeToString(value))
 }
