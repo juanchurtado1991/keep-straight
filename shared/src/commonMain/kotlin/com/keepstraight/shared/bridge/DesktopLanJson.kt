@@ -7,6 +7,17 @@ import com.ghost.serialization.Ghost
  * Call sites keep these helpers so wire usage stays in one place.
  */
 object DesktopLanJson {
+    fun pingToJson(response: DesktopLanPingResponse): String = Ghost.encodeToString(response)
+
+    fun parsePing(json: String): DesktopLanPingResponse? =
+        runCatching { Ghost.deserialize<DesktopLanPingResponse>(json.trim()) }.getOrNull()
+
+    fun ackToJson(response: DesktopLanAckResponse = DesktopLanAckResponse()): String =
+        Ghost.encodeToString(response)
+
+    fun parseAck(json: String): DesktopLanAckResponse? =
+        runCatching { Ghost.deserialize<DesktopLanAckResponse>(json.trim()) }.getOrNull()
+
     fun eventToJson(event: DesktopSlumpEvent): String = Ghost.encodeToString(event)
 
     fun parseEvent(json: String): DesktopSlumpEvent? =

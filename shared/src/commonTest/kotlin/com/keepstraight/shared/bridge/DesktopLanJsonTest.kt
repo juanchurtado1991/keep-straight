@@ -9,6 +9,31 @@ import kotlin.test.assertTrue
 
 class DesktopLanJsonTest {
     @Test
+    fun ping_roundTrip() {
+        val ping = DesktopLanPingResponse(ok = true, protocolVersion = DesktopLanProtocol.VERSION)
+        val parsed = DesktopLanJson.parsePing(DesktopLanJson.pingToJson(ping))
+        assertEquals(ping, parsed)
+    }
+
+    @Test
+    fun ping_parsesLegacyWireJson() {
+        val parsed = DesktopLanJson.parsePing("""{"ok":true,"protocolVersion":1}""")
+        assertEquals(DesktopLanPingResponse(ok = true, protocolVersion = 1), parsed)
+    }
+
+    @Test
+    fun ack_roundTrip() {
+        val parsed = DesktopLanJson.parseAck(DesktopLanJson.ackToJson())
+        assertEquals(DesktopLanAckResponse(), parsed)
+    }
+
+    @Test
+    fun ack_parsesLegacyWireJson() {
+        val parsed = DesktopLanJson.parseAck("""{"ok":true}""")
+        assertEquals(DesktopLanAckResponse(), parsed)
+    }
+
+    @Test
     fun pairRequest_roundTrip() {
         val req = DesktopPairRequest(code = "123456", protocolVersion = DesktopLanProtocol.VERSION)
         val parsed = DesktopLanJson.parsePairRequest(DesktopLanJson.pairRequestToJson(req))

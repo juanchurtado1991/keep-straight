@@ -100,6 +100,17 @@ data class DesktopSlumpEvent(
 )
 
 @GhostSerialization
+data class DesktopLanPingResponse(
+    val ok: Boolean,
+    val protocolVersion: Int = DesktopLanProtocol.VERSION,
+)
+
+@GhostSerialization
+data class DesktopLanAckResponse(
+    val ok: Boolean = true,
+)
+
+@GhostSerialization
 data class DesktopPairRequest(
     val code: String,
     val protocolVersion: Int = DesktopLanProtocol.VERSION,

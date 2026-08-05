@@ -6,7 +6,9 @@ import com.keepstraight.R
 import com.keepstraight.data.PostureHistoryRepository
 import com.keepstraight.data.UserPreferencesRepository
 import com.keepstraight.shared.bridge.BridgeProtocolError
+import com.keepstraight.shared.bridge.DesktopLanAckResponse
 import com.keepstraight.shared.bridge.DesktopLanJson
+import com.keepstraight.shared.bridge.DesktopLanPingResponse
 import com.keepstraight.shared.bridge.DesktopLanProtocol
 import com.keepstraight.shared.bridge.DesktopPairResponse
 import com.keepstraight.shared.bridge.DesktopPhoneSettings
@@ -85,7 +87,12 @@ class PhoneLanIngestServer(
             routing {
                 get(DesktopLanProtocol.PATH_PING) {
                     call.respondText(
-                        """{"ok":true,"protocolVersion":${DesktopLanProtocol.VERSION}}""",
+                        DesktopLanJson.pingToJson(
+                            DesktopLanPingResponse(
+                                ok = true,
+                                protocolVersion = DesktopLanProtocol.VERSION,
+                            ),
+                        ),
                         ContentType.Application.Json,
                     )
                 }
@@ -184,7 +191,10 @@ class PhoneLanIngestServer(
                         return@post
                     }
                     handleEvent(event)
-                    call.respondText("""{"ok":true}""", ContentType.Application.Json)
+                    call.respondText(
+                        DesktopLanJson.ackToJson(DesktopLanAckResponse()),
+                        ContentType.Application.Json,
+                    )
                 }
             }
         }.also {
