@@ -1,6 +1,9 @@
 package com.keepstraight.shared.bridge
 
+import com.ghost.serialization.annotations.GhostSerialization
+
 /** Stable LAN / pair-assist error codes — localize on each client, never show raw on UI. */
+@GhostSerialization
 enum class BridgeProtocolError {
     INVALID_CODE,
     CODE_EXPIRED,

@@ -1,5 +1,7 @@
 package com.keepstraight.shared.bridge
 
+import com.ghost.serialization.annotations.GhostSerialization
+
 /**
  * Phase 2 LAN bridge: desktop → phone (same Wi‑Fi), then phone → watch via Wear.
  * Protocol version must match on both ends.
@@ -25,6 +27,7 @@ data class DesktopPairOffer(
     val nonce: String,
 )
 
+@GhostSerialization
 data class PhoneHelloRequest(
     val nonce: String,
     val code: String,
@@ -33,6 +36,7 @@ data class PhoneHelloRequest(
     val protocolVersion: Int = DesktopLanProtocol.VERSION,
 )
 
+@GhostSerialization
 data class PhoneHelloResponse(
     val ok: Boolean,
     val errorCode: BridgeProtocolError? = null,
@@ -71,6 +75,7 @@ object DesktopPairingQr {
     }
 }
 
+@GhostSerialization
 enum class DesktopSlumpEventType {
     SLUMP_INITIAL,
     SLUMP_REPEAT,
@@ -81,6 +86,7 @@ enum class DesktopSlumpEventType {
     WORK_SAMPLE,
 }
 
+@GhostSerialization
 data class DesktopSlumpEvent(
     val type: DesktopSlumpEventType,
     val slumpScore: Float = 0f,
@@ -93,17 +99,20 @@ data class DesktopSlumpEvent(
     val goodPostureDeltaSec: Int = 0,
 )
 
+@GhostSerialization
 data class DesktopPairRequest(
     val code: String,
     val protocolVersion: Int = DesktopLanProtocol.VERSION,
 )
 
+@GhostSerialization
 data class DesktopPairResponse(
     val ok: Boolean,
     val token: String = "",
     val errorCode: BridgeProtocolError? = null,
 )
 
+@GhostSerialization
 data class DesktopPhoneSettings(
     val sensitivity: String = "NORMAL",
     val slumpDurationThresholdMs: Long = 30_000L,
@@ -111,138 +120,3 @@ data class DesktopPhoneSettings(
     val alertsEnabled: Boolean = true,
     val protocolVersion: Int = DesktopLanProtocol.VERSION,
 )
-
-/**
- * Plain JSON encode/decode for the desktop↔phone LAN HTTP bridge.
- * Phone↔watch payloads use Ghost ([com.ghost.serialization.Ghost]), not this format.
- */
-object DesktopLanJson {
-    fun eventToJson(event: DesktopSlumpEvent): String =
-        """{"type":"${event.type.name}","slumpScore":${event.slumpScore},"presence":"${event.presence}","timestampMs":${event.timestampMs},"protocolVersion":${event.protocolVersion},"seatedDeltaSec":${event.seatedDeltaSec},"goodPostureDeltaSec":${event.goodPostureDeltaSec}}"""
-
-    fun parseEvent(json: String): DesktopSlumpEvent? {
-        val type = stringField(json, "type") ?: return null
-        val eventType = runCatching { DesktopSlumpEventType.valueOf(type) }.getOrNull() ?: return null
-        return DesktopSlumpEvent(
-            type = eventType,
-            slumpScore = floatField(json, "slumpScore") ?: 0f,
-            presence = stringField(json, "presence") ?: "SITTING",
-            timestampMs = longField(json, "timestampMs") ?: 0L,
-            protocolVersion = intField(json, "protocolVersion") ?: 0,
-            seatedDeltaSec = intField(json, "seatedDeltaSec") ?: 0,
-            goodPostureDeltaSec = intField(json, "goodPostureDeltaSec") ?: 0,
-        )
-    }
-
-    fun pairRequestToJson(req: DesktopPairRequest): String =
-        """{"code":"${req.code}","protocolVersion":${req.protocolVersion}}"""
-
-    fun parsePairRequest(json: String): DesktopPairRequest? {
-        val code = stringField(json, "code") ?: return null
-        return DesktopPairRequest(
-            code = code,
-            protocolVersion = intField(json, "protocolVersion") ?: 0,
-        )
-    }
-
-    fun pairResponseToJson(res: DesktopPairResponse): String {
-        val codeJson = res.errorCode?.let { ""","errorCode":"${it.name}"""" }.orEmpty()
-        return """{"ok":${res.ok},"token":"${res.token}"$codeJson}"""
-    }
-
-    fun parsePairResponse(json: String): DesktopPairResponse? {
-        val trimmed = json.trim()
-        if (!trimmed.startsWith("{")) return null
-        if (DesktopLanJsonWire.isOkFalse(trimmed) && !DesktopLanJsonWire.isOkTrue(trimmed)) {
-            return DesktopPairResponse(
-                ok = false,
-                token = stringField(trimmed, "token").orEmpty(),
-                errorCode = parseErrorCode(trimmed),
-            )
-        }
-        if (!DesktopLanJsonWire.isOkTrue(trimmed)) return null
-        return DesktopPairResponse(
-            ok = true,
-            token = stringField(trimmed, "token").orEmpty(),
-            errorCode = parseErrorCode(trimmed),
-        )
-    }
-
-    fun settingsToJson(settings: DesktopPhoneSettings): String =
-        """{"sensitivity":"${settings.sensitivity}","slumpDurationThresholdMs":${settings.slumpDurationThresholdMs},"repeatAlertIntervalMs":${settings.repeatAlertIntervalMs},"alertsEnabled":${settings.alertsEnabled},"protocolVersion":${settings.protocolVersion}}"""
-
-    fun parseSettings(json: String): DesktopPhoneSettings? {
-        val sensitivity = stringField(json, "sensitivity") ?: return null
-        return DesktopPhoneSettings(
-            sensitivity = sensitivity,
-            slumpDurationThresholdMs = longField(json, "slumpDurationThresholdMs") ?: 30_000L,
-            repeatAlertIntervalMs = longField(json, "repeatAlertIntervalMs") ?: 5_000L,
-            alertsEnabled = booleanField(json, "alertsEnabled") ?: true,
-            protocolVersion = intField(json, "protocolVersion") ?: 0,
-        )
-    }
-
-    fun phoneHelloToJson(req: PhoneHelloRequest): String {
-        val hosts = req.phoneHosts.joinToString(",") { "\"$it\"" }
-        return """{"nonce":"${req.nonce}","code":"${req.code}","phoneHosts":[$hosts],"phonePort":${req.phonePort},"protocolVersion":${req.protocolVersion}}"""
-    }
-
-    fun parsePhoneHello(json: String): PhoneHelloRequest? {
-        val nonce = stringField(json, "nonce") ?: return null
-        val code = stringField(json, "code") ?: return null
-        val hosts = stringArrayField(json, "phoneHosts")
-        if (hosts.isEmpty()) return null
-        return PhoneHelloRequest(
-            nonce = nonce,
-            code = code,
-            phoneHosts = hosts,
-            phonePort = intField(json, "phonePort") ?: DesktopLanProtocol.DEFAULT_PORT,
-            protocolVersion = intField(json, "protocolVersion") ?: 0,
-        )
-    }
-
-    fun phoneHelloResponseToJson(res: PhoneHelloResponse): String {
-        val codeJson = res.errorCode?.let { ""","errorCode":"${it.name}"""" }.orEmpty()
-        return """{"ok":${res.ok}$codeJson}"""
-    }
-
-    fun parsePhoneHelloResponse(json: String): PhoneHelloResponse =
-        PhoneHelloResponse(
-            ok = DesktopLanJsonWire.isOkTrue(json),
-            errorCode = parseErrorCode(json),
-        )
-
-    private fun parseErrorCode(json: String): BridgeProtocolError? =
-        stringField(json, "errorCode")?.let { raw ->
-            runCatching { BridgeProtocolError.valueOf(raw) }.getOrNull()
-        }
-
-    private fun stringArrayField(json: String, key: String): List<String> {
-        val regex = Regex("\"$key\"\\s*:\\s*\\[(.*?)]")
-        val inner = regex.find(json)?.groupValues?.get(1) ?: return emptyList()
-        return Regex("\"([^\"]*)\"").findAll(inner).map { it.groupValues[1] }.toList()
-    }
-
-    private fun stringField(json: String, key: String): String? {
-        val regex = Regex("\"$key\"\\s*:\\s*\"([^\"]*)\"")
-        return regex.find(json)?.groupValues?.get(1)
-    }
-
-    private fun floatField(json: String, key: String): Float? {
-        val regex = Regex("\"$key\"\\s*:\\s*(-?[0-9.]+)")
-        return regex.find(json)?.groupValues?.get(1)?.toFloatOrNull()
-    }
-
-    private fun longField(json: String, key: String): Long? {
-        val regex = Regex("\"$key\"\\s*:\\s*(-?[0-9]+)")
-        return regex.find(json)?.groupValues?.get(1)?.toLongOrNull()
-    }
-
-    private fun intField(json: String, key: String): Int? =
-        longField(json, key)?.toInt()
-
-    private fun booleanField(json: String, key: String): Boolean? {
-        val regex = Regex("\"$key\"\\s*:\\s*(true|false)")
-        return regex.find(json)?.groupValues?.get(1)?.toBooleanStrictOrNull()
-    }
-}

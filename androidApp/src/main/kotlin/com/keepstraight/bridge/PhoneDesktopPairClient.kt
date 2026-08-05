@@ -64,6 +64,7 @@ class PhoneDesktopPairClient(
         }
         val body = response.bodyAsText()
         val parsed = DesktopLanJson.parsePhoneHelloResponse(body)
+            ?: throw PhonePairException(PhonePairError.DESKTOP_REJECTED)
         if (!response.status.isSuccess() || !parsed.ok) {
             throw PhonePairException(phonePairErrorFromProtocol(parsed.errorCode))
         }
