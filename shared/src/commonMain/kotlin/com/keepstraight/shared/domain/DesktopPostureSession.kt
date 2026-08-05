@@ -125,6 +125,12 @@ class DesktopPostureSession {
         }
     }
 
+    fun clearCameraIssue() {
+        if (_ui.value.issue is DesktopIssue.Camera) {
+            _ui.value = _ui.value.copy(issue = null)
+        }
+    }
+
     fun setCalibration(cal: LandmarkCalibration) {
         calibration = cal.copy(
             slumpDurationThresholdMs = pendingSlumpDurationMs,
@@ -281,6 +287,13 @@ class DesktopPostureSession {
             LandmarkPostureScorer.directedSlumpScore(features, cal) ?: 0f
         } else {
             0f
+        }
+
+        if (_ui.value.calibrationPhase == CalibrationPhase.CAPTURE_ERECT ||
+            _ui.value.calibrationPhase == CalibrationPhase.CAPTURE_SLUMP
+        ) {
+            _ui.value = _ui.value.copy(presence = presence, slumpScore = score)
+            return null
         }
 
         val running = _ui.value.phase == DesktopSessionPhase.RUNNING ||
