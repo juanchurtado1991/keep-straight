@@ -35,6 +35,10 @@ fun ConnectionFlowScreen(
     val pairedWatchId by viewModel.pairedWatchId.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.onScreenOpened()
+    }
+
     LaunchedEffect(autoStart) {
         if (autoStart) {
             viewModel.reconnectWatch()

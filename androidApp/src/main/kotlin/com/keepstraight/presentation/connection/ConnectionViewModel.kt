@@ -17,8 +17,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+
 import java.util.concurrent.TimeoutException
 
 class ConnectionViewModel(
@@ -53,12 +55,20 @@ class ConnectionViewModel(
                 Result.failure(error)
             }
 
-            deviceSyncGateway.refreshConnectionStatus()
-            if (result.isSuccess) {
+            val connected = deviceSyncGateway.refreshConnectionStatus()
+            if (result.isSuccess && connected) {
                 _reconnectState.value = ReconnectUiState.Success
+            } else if (result.isSuccess) {
+                _reconnectState.value = ReconnectUiState.Failed(ReconnectError.WATCH_UNREACHABLE)
             } else {
                 _reconnectState.value = ReconnectUiState.Failed(mapReconnectError(result.exceptionOrNull()))
             }
+        }
+    }
+
+    fun onScreenOpened() {
+        if (_reconnectState.value is ReconnectUiState.Success) {
+            _reconnectState.value = ReconnectUiState.Idle
         }
     }
 
