@@ -14,28 +14,38 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.keepstraight.R
+import com.keepstraight.presentation.calibration.CalibrationViewModel
 import com.keepstraight.shared.presentation.CalibrationError
 import com.keepstraight.shared.presentation.CalibrationPhase
 import com.keepstraight.shared.presentation.CalibrationUiState
+import com.keepstraight.shared.presentation.phone.CalibrationEffect
+import com.keepstraight.shared.presentation.phone.CalibrationEvent
 import com.keepstraight.ui.components.KeepStraightTopBar
 import com.keepstraight.ui.components.StatusPanel
 import com.keepstraight.ui.components.StatusTone
-import com.keepstraight.viewmodel.MainViewModel
 
 @Composable
 fun CalibratePostureScreen(
-    viewModel: MainViewModel,
+    viewModel: CalibrationViewModel,
     onBack: () -> Unit,
     onOpenConnection: () -> Unit,
 ) {
     val isConnected by viewModel.isConnected.collectAsState()
-    val calibrationState by viewModel.calibrationState.collectAsState()
+    val calibrationState by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                CalibrationEffect.NavigateBack -> onBack()
+            }
+        }
+    }
 
     LaunchedEffect(calibrationState) {
         if (calibrationState is CalibrationUiState.Success) {
             kotlinx.coroutines.delay(1_800)
-            viewModel.resetCalibrationState()
-            onBack()
+            viewModel.onEvent(CalibrationEvent.Reset)
+            viewModel.onEvent(CalibrationEvent.SuccessAcknowledged)
         }
     }
 
@@ -44,7 +54,7 @@ fun CalibratePostureScreen(
             KeepStraightTopBar(
                 title = stringResource(R.string.calibrate_title),
                 onBack = {
-                    viewModel.resetCalibrationState()
+                    viewModel.onEvent(CalibrationEvent.Reset)
                     onBack()
                 },
             )
@@ -72,7 +82,7 @@ fun CalibratePostureScreen(
                         title = stringResource(R.string.calibrate_ready_title),
                         body = stringResource(R.string.calibrate_instructions),
                         primaryActionLabel = stringResource(R.string.calibrate_start),
-                        onPrimaryAction = viewModel::startCalibrationCountdown,
+                        onPrimaryAction = { viewModel.onEvent(CalibrationEvent.Start) },
                         modifier = panelModifier,
                     )
                 }
@@ -85,7 +95,7 @@ fun CalibratePostureScreen(
                     title = stringResource(R.string.calibrate_slouch_title),
                     body = stringResource(R.string.calibrate_slouch_body),
                     primaryActionLabel = stringResource(R.string.calibrate_slouch_capture),
-                    onPrimaryAction = viewModel::continueSlouchCalibration,
+                    onPrimaryAction = { viewModel.onEvent(CalibrationEvent.ContinueSlouch) },
                     modifier = panelModifier,
                 )
             }
@@ -135,8 +145,8 @@ fun CalibratePostureScreen(
                     body = calibrationErrorText(state.reason),
                     primaryActionLabel = stringResource(R.string.calibrate_retry),
                     onPrimaryAction = {
-                        viewModel.resetCalibrationState()
-                        viewModel.startCalibrationCountdown()
+                        viewModel.onEvent(CalibrationEvent.Reset)
+                        viewModel.onEvent(CalibrationEvent.Start)
                     },
                     secondaryActionLabel = stringResource(R.string.connection_flow_title),
                     onSecondaryAction = onOpenConnection,

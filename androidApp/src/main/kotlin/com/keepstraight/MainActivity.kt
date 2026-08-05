@@ -18,7 +18,15 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.keepstraight.bridge.PhoneLanBridgeService
+import com.keepstraight.presentation.calibration.CalibrationViewModel
+import com.keepstraight.presentation.connection.ConnectionViewModel
+import com.keepstraight.presentation.dashboard.DashboardViewModel
+import com.keepstraight.presentation.onboarding.OnboardingViewModel
+import com.keepstraight.presentation.pairing.WatchPairingViewModel
+import com.keepstraight.presentation.settings.SettingsViewModel
+import com.keepstraight.presentation.shell.AppShellViewModel
 import com.keepstraight.ui.AlertSettingsScreen
+import com.keepstraight.ui.CalibratePostureScreen
 import com.keepstraight.ui.ConnectionFlowScreen
 import com.keepstraight.ui.DashboardScreen
 import com.keepstraight.ui.DesktopQrScanScreen
@@ -29,7 +37,6 @@ import com.keepstraight.ui.onboarding.OnboardingScreen
 import com.keepstraight.ui.onboarding.STEP_PAIR
 import com.keepstraight.ui.theme.KeepStraightTheme
 import com.keepstraight.util.SystemIntentsHelper
-import com.keepstraight.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -37,7 +44,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission(),
     ) { /* user choice handled via settings deep link */ }
 
-    private var mainViewModel: MainViewModel? = null
+    private var dashboardViewModel: DashboardViewModel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,11 +61,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             KeepStraightTheme {
-                val viewModel: MainViewModel = viewModel()
-                mainViewModel = viewModel
+                val shellViewModel: AppShellViewModel = viewModel()
                 val navController = rememberNavController()
-                val onboardingComplete by viewModel.onboardingComplete.collectAsState()
-                val events = viewModel.eventsPaged.collectAsLazyPagingItems()
+                val onboardingComplete by shellViewModel.onboardingComplete.collectAsState()
+                val events = shellViewModel.eventsPaged.collectAsLazyPagingItems()
 
                 val startDestination = if (onboardingComplete) {
                     Routes.DASHBOARD
@@ -72,8 +78,11 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(navController = navController, startDestination = startDestination) {
                     composable(Routes.ONBOARDING) {
+                        val pairingViewModel: WatchPairingViewModel = viewModel()
+                        val onboardingViewModel: OnboardingViewModel = viewModel()
                         OnboardingScreen(
-                            viewModel = viewModel,
+                            pairingViewModel = pairingViewModel,
+                            onboardingViewModel = onboardingViewModel,
                             onOpenNotificationSettings = {
                                 startActivity(SystemIntentsHelper.notificationSettings(this@MainActivity))
                             },
@@ -98,8 +107,11 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(Routes.CHANGE_WATCH) {
+                        val pairingViewModel: WatchPairingViewModel = viewModel()
+                        val onboardingViewModel: OnboardingViewModel = viewModel()
                         OnboardingScreen(
-                            viewModel = viewModel,
+                            pairingViewModel = pairingViewModel,
+                            onboardingViewModel = onboardingViewModel,
                             onOpenNotificationSettings = {},
                             onOpenBatterySettings = {},
                             onOpenBatteryFallback = {},
@@ -116,8 +128,10 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(Routes.DASHBOARD) {
+                        val dashboardVm: DashboardViewModel = viewModel()
+                        dashboardViewModel = dashboardVm
                         DashboardScreen(
-                            viewModel = viewModel,
+                            viewModel = dashboardVm,
                             onSettings = { navController.navigate(Routes.SETTINGS) },
                             onScanDesktopQr = { navController.navigate(Routes.DESKTOP_QR) },
                             onOpenBatterySettings = {
@@ -135,8 +149,9 @@ class MainActivity : ComponentActivity() {
                         ),
                     ) { entry ->
                         val autoStart = entry.arguments?.getBoolean("autoStart") ?: false
+                        val connectionViewModel: ConnectionViewModel = viewModel()
                         ConnectionFlowScreen(
-                            viewModel = viewModel,
+                            viewModel = connectionViewModel,
                             autoStart = autoStart,
                             onBack = { navController.popBackStack() },
                             onChangeWatch = {
@@ -158,22 +173,25 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(Routes.ALERT_SETTINGS) {
+                        val settingsViewModel: SettingsViewModel = viewModel()
                         AlertSettingsScreen(
-                            viewModel = viewModel,
+                            viewModel = settingsViewModel,
                             onBack = { navController.popBackStack() },
                         )
                     }
 
                     composable(Routes.SENSITIVITY) {
+                        val settingsViewModel: SettingsViewModel = viewModel()
                         SensitivityScreen(
-                            viewModel = viewModel,
+                            viewModel = settingsViewModel,
                             onBack = { navController.popBackStack() },
                         )
                     }
 
                     composable(Routes.SETTINGS) {
+                        val settingsViewModel: SettingsViewModel = viewModel()
                         SettingsScreen(
-                            viewModel = viewModel,
+                            viewModel = settingsViewModel,
                             onOpenNotificationSettings = {
                                 startActivity(SystemIntentsHelper.notificationSettings(this@MainActivity))
                             },
@@ -197,6 +215,15 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    composable(Routes.CALIBRATE) {
+                        val calibrationViewModel: CalibrationViewModel = viewModel()
+                        CalibratePostureScreen(
+                            viewModel = calibrationViewModel,
+                            onBack = { navController.popBackStack() },
+                            onOpenConnection = { openConnection(autoStart = true) },
+                        )
+                    }
+
                     composable(Routes.DESKTOP_QR) {
                         DesktopQrScanScreen(
                             onBack = { navController.popBackStack() },
@@ -212,7 +239,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        mainViewModel?.refreshBatteryBanner()
+        dashboardViewModel?.refreshBatteryBanner()
     }
 }
 
@@ -225,6 +252,7 @@ private object Routes {
     const val ALERT_SETTINGS = "alert_settings"
     const val SENSITIVITY = "sensitivity"
     const val SETTINGS = "settings"
+    const val CALIBRATE = "calibrate"
     const val DESKTOP_QR = "desktop_qr"
 
     fun connection(autoStart: Boolean) = "connection?autoStart=$autoStart"
