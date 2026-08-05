@@ -1,6 +1,7 @@
 package com.keepstraight.desktop.alert
 
 import com.keepstraight.desktop.presentation.DesktopMessageKey
+import com.keepstraight.shared.platform.JvmOsSignals
 import java.io.File
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -32,11 +33,10 @@ object NativeDesktopNotifier {
     }
 
     fun notify(title: String, body: String): Result {
-        val os = System.getProperty("os.name").orEmpty().lowercase()
         return try {
             when {
-                os.contains("mac") -> macNotify(title, body)
-                os.contains("win") -> windowsNotify(title, body)
+                JvmOsSignals.isMac() -> macNotify(title, body)
+                JvmOsSignals.isWindows() -> windowsNotify(title, body)
                 else -> linuxNotify(title, body)
             }
         } catch (_: Exception) {
@@ -44,13 +44,10 @@ object NativeDesktopNotifier {
         }
     }
 
-    fun isLikelySupported(): Boolean {
-        val os = System.getProperty("os.name").orEmpty().lowercase()
-        return when {
-            os.contains("mac") -> resolveMacNotifyApp() != null
-            os.contains("win") -> true
-            else -> commandExists("notify-send")
-        }
+    fun isLikelySupported(): Boolean = when {
+        JvmOsSignals.isMac() -> resolveMacNotifyApp() != null
+        JvmOsSignals.isWindows() -> true
+        else -> commandExists("notify-send")
     }
 
     private fun macNotify(title: String, body: String): Result {

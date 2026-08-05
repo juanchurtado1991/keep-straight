@@ -11,6 +11,7 @@ import com.keepstraight.desktop.presentation.DesktopMessageKey
 import com.keepstraight.desktop.presentation.DesktopPrefsKeys
 import com.keepstraight.desktop.presentation.UserMessage
 import com.keepstraight.desktop.ui.i18n.DesktopMessageJvm
+import com.keepstraight.shared.platform.JvmOsSignals
 import com.keepstraight.shared.presentation.DesktopStatusAction
 import com.keepstraight.shared.presentation.DesktopStatusPresentation
 import androidx.compose.ui.graphics.ImageBitmap
@@ -141,10 +142,9 @@ class DesktopSessionController(
     fun noteHiddenToTray() {
         if (prefs.getBoolean(DesktopPrefsKeys.TRAY_HINT_SHOWN, false)) return
         prefs.putBoolean(DesktopPrefsKeys.TRAY_HINT_SHOWN, true)
-        val os = System.getProperty("os.name").orEmpty().lowercase()
         val whereKey = when {
-            os.contains("mac") -> DesktopMessageKey.TRAY_WHERE_MENU_BAR
-            os.contains("win") -> DesktopMessageKey.TRAY_WHERE_NOTIFICATION
+            JvmOsSignals.isMac() -> DesktopMessageKey.TRAY_WHERE_MENU_BAR
+            JvmOsSignals.isWindows() -> DesktopMessageKey.TRAY_WHERE_NOTIFICATION
             else -> DesktopMessageKey.TRAY_WHERE_SYSTEM_TRAY
         }
         scope.launch {

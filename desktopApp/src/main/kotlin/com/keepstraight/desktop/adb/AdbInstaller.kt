@@ -1,6 +1,7 @@
 package com.keepstraight.desktop.adb
 
 import com.keepstraight.desktop.presentation.DesktopMessageKey
+import com.keepstraight.shared.platform.JvmOsSignals
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 import java.io.File
@@ -123,8 +124,7 @@ class AdbInstaller(
                 titleKey = DesktopMessageKey.ADB_PAIR_TIMEOUT_TITLE,
                 bodyKey = DesktopMessageKey.ADB_PAIR_TIMEOUT_BODY,
             )
-        val ok = output.contains("Successfully paired", ignoreCase = true) ||
-            output.contains("paired to", ignoreCase = true)
+        val ok = AdbCliOutputSignals.pairedSuccessfully(output)
         return if (ok) {
             AdbResult.Ok(Unit)
         } else {
@@ -157,8 +157,7 @@ class AdbInstaller(
                 titleKey = DesktopMessageKey.ADB_CONNECT_TIMEOUT_TITLE,
                 bodyKey = DesktopMessageKey.ADB_CONNECT_TIMEOUT_BODY,
             )
-        val ok = output.contains("connected to", ignoreCase = true) ||
-            output.contains("already connected", ignoreCase = true)
+        val ok = AdbCliOutputSignals.connectedSuccessfully(output)
         return if (ok) {
             AdbResult.Ok(Unit)
         } else {
@@ -256,14 +255,12 @@ class AdbInstaller(
                 titleKey = DesktopMessageKey.ADB_INSTALL_TIMEOUT_TITLE,
                 bodyKey = DesktopMessageKey.ADB_INSTALL_TIMEOUT_BODY,
             )
-        if (output.contains("Success", ignoreCase = true)) {
+        if (AdbCliOutputSignals.installSucceeded(output)) {
             launchApp(adb, target.serial, wantWatch)
             return AdbResult.Ok(Unit)
         }
         // Reinstall after a differently signed build (common when switching debug ↔ sideload).
-        if (output.contains("INSTALL_FAILED_UPDATE_INCOMPATIBLE", ignoreCase = true) ||
-            output.contains("signatures do not match", ignoreCase = true)
-        ) {
+        if (AdbCliOutputSignals.needsSignatureReinstall(output)) {
             val pkg = "com.keepstraight"
             run(adb, listOf("-s", target.serial, "uninstall", pkg), timeoutSec = 30)
             output = run(adb, args, timeoutSec = 180)
@@ -272,7 +269,7 @@ class AdbInstaller(
                 titleKey = DesktopMessageKey.ADB_UNINSTALL_RETRY_TIMEOUT_TITLE,
                 bodyKey = DesktopMessageKey.ADB_UNINSTALL_RETRY_TIMEOUT_BODY,
                 )
-            if (output.contains("Success", ignoreCase = true)) {
+            if (AdbCliOutputSignals.installSucceeded(output)) {
                 launchApp(adb, target.serial, wantWatch)
                 return AdbResult.Ok(Unit)
             }
@@ -320,7 +317,7 @@ class AdbInstaller(
             listOf("-s", serial, "shell", "getprop", "ro.build.characteristics"),
             timeoutSec = 15,
         )
-        return output?.contains("watch", ignoreCase = true) == true
+        return output?.let(AdbCliOutputSignals::isWatchDevice) == true
     }
 
     private fun resolvePhoneApk(): File? = findApk("keepstraight-phone.apk", "androidApp.apk")
@@ -369,13 +366,8 @@ class AdbInstaller(
                 return cached
             }
 
-            val os = System.getProperty("os.name").orEmpty().lowercase()
-            val folder = when {
-                os.contains("mac") -> "macos"
-                os.contains("win") -> "windows"
-                else -> "linux"
-            }
-            val isWindows = os.contains("win")
+            val folder = JvmOsSignals.adbResourceFolder()
+            val isWindows = JvmOsSignals.isWindows()
             val exeName = if (isWindows) "adb.exe" else "adb"
             val adb = extractResourceBinary("adb/$folder/$exeName")
                 ?: resourceRoot?.let { root ->
@@ -397,7 +389,7 @@ class AdbInstaller(
 
     /** Linux/macOS: adb must stay executable after extract or reuse from disk. */
     private fun ensureUnixExecutable(file: File) {
-        if (System.getProperty("os.name").orEmpty().lowercase().contains("win")) return
+        if (JvmOsSignals.isWindows()) return
         if (!file.isFile) return
         if (!file.canExecute()) {
             file.setReadable(true, false)
@@ -436,7 +428,7 @@ class AdbInstaller(
     }
 
     private fun systemAdb(): File? {
-        val which = if (System.getProperty("os.name").orEmpty().lowercase().contains("win")) {
+        val which = if (JvmOsSignals.isWindows()) {
             listOf("where", "adb")
         } else {
             listOf("which", "adb")

@@ -2,6 +2,7 @@ package com.keepstraight.desktop
 
 import com.keepstraight.desktop.presentation.DesktopMessageKey
 import com.keepstraight.desktop.ui.i18n.DesktopMessageJvm
+import com.keepstraight.shared.platform.JvmOsSignals
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -123,9 +124,8 @@ object LoginItemManager {
         return null
     }
 
-    private val isMac get() = osName.contains("mac")
-    private val isWindows get() = osName.contains("win")
-    private val osName get() = System.getProperty("os.name").orEmpty().lowercase()
+    private val isMac get() = JvmOsSignals.isMac()
+    private val isWindows get() = JvmOsSignals.isWindows()
 
     private fun macPlist(): File =
         File(System.getProperty("user.home"), "Library/LaunchAgents/$LABEL.plist")
