@@ -1,6 +1,7 @@
 package com.keepstraight.shared.bridge
 
 import com.ghost.serialization.annotations.GhostSerialization
+import com.keepstraight.shared.model.SensitivityLevel
 
 /**
  * Phase 2 LAN bridge: desktop → phone (same Wi‑Fi), then phone → watch via Wear.
@@ -125,7 +126,7 @@ data class DesktopPairResponse(
 
 @GhostSerialization
 data class DesktopPhoneSettings(
-    val sensitivity: String = "NORMAL",
+    val sensitivity: SensitivityLevel = SensitivityLevel.NORMAL,
     val slumpDurationThresholdMs: Long = 30_000L,
     val repeatAlertIntervalMs: Long = 5_000L,
     val alertsEnabled: Boolean = true,

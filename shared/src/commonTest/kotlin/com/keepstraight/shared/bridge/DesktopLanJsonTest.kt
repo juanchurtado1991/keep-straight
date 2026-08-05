@@ -1,5 +1,6 @@
 package com.keepstraight.shared.bridge
 
+import com.keepstraight.shared.model.SensitivityLevel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -80,7 +81,7 @@ class DesktopLanJsonTest {
     @Test
     fun settings_roundTrip() {
         val settings = DesktopPhoneSettings(
-            sensitivity = "STRICT",
+            sensitivity = SensitivityLevel.STRICT,
             slumpDurationThresholdMs = 45_000L,
             repeatAlertIntervalMs = 12_000L,
             alertsEnabled = false,
@@ -96,7 +97,7 @@ class DesktopLanJsonTest {
             """{"sensitivity":"NORMAL","slumpDurationThresholdMs":30000,"repeatAlertIntervalMs":5000,"alertsEnabled":true,"protocolVersion":1}"""
         val parsed = DesktopLanJson.parseSettings(json)
         assertNotNull(parsed)
-        assertEquals("NORMAL", parsed.sensitivity)
+        assertEquals(SensitivityLevel.NORMAL, parsed.sensitivity)
         assertEquals(30_000L, parsed.slumpDurationThresholdMs)
     }
 

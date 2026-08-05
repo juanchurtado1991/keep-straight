@@ -307,7 +307,7 @@ class PhoneLanIngestServer(
 
     private suspend fun currentPhoneSettings(): DesktopPhoneSettings =
         DesktopPhoneSettings(
-            sensitivity = preferencesRepository.sensitivity.first().name,
+            sensitivity = preferencesRepository.sensitivity.first(),
             slumpDurationThresholdMs = preferencesRepository.slumpDurationThresholdMs.first(),
             repeatAlertIntervalMs = preferencesRepository.repeatAlertIntervalMs.first(),
             alertsEnabled = preferencesRepository.alertsEnabled.first(),

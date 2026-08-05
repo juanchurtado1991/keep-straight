@@ -363,16 +363,13 @@ class BridgeStore(
     private suspend fun syncSettingsFromPhone() {
         val result = bridge.fetchSettings()
         result.onSuccess { settings ->
-            val level = runCatching {
-                SensitivityLevel.valueOf(settings.sensitivity)
-            }.getOrDefault(SensitivityLevel.NORMAL)
             phoneAlertsEnabled = settings.alertsEnabled
             session.applyPhoneSettings(
-                sensitivity = level,
+                sensitivity = settings.sensitivity,
                 slumpDurationThresholdMs = settings.slumpDurationThresholdMs,
                 repeatAlertIntervalMs = settings.repeatAlertIntervalMs,
             )
-            prefs.put(DesktopPrefsKeys.SENSITIVITY, level.name)
+            prefs.put(DesktopPrefsKeys.SENSITIVITY, settings.sensitivity.name)
             prefs.putLong(DesktopPrefsKeys.SLUMP_DURATION_MS, settings.slumpDurationThresholdMs)
             prefs.putLong(DesktopPrefsKeys.REPEAT_ALERT_MS, settings.repeatAlertIntervalMs)
             session.currentCalibration()?.let { CalibrationStore.save(prefs, it) }
