@@ -32,12 +32,12 @@ import com.keepstraight.ui.components.KeepStraightTopBar
 import com.keepstraight.ui.theme.PhoneCard
 import com.keepstraight.ui.theme.PhoneDimens
 import com.keepstraight.ui.theme.PhonePage
-import com.keepstraight.viewmodel.MainViewModel
+import com.keepstraight.presentation.settings.SettingsViewModel
 import kotlin.math.roundToInt
 
 @Composable
 fun SensitivityScreen(
-    viewModel: MainViewModel,
+    viewModel: SettingsViewModel,
     onBack: () -> Unit,
 ) {
     val sensitivity by viewModel.sensitivity.collectAsState()

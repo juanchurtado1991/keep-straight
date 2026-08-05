@@ -29,11 +29,11 @@ import com.keepstraight.ui.theme.PhoneDimens
 import com.keepstraight.ui.theme.PhonePage
 import com.keepstraight.ui.theme.phoneButtonShape
 import com.keepstraight.ui.theme.phoneSecondaryButtonColors
-import com.keepstraight.viewmodel.MainViewModel
+import com.keepstraight.presentation.settings.SettingsViewModel
 
 @Composable
 fun SettingsScreen(
-    viewModel: MainViewModel,
+    viewModel: SettingsViewModel,
     onOpenNotificationSettings: () -> Unit,
     onOpenBatterySettings: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,

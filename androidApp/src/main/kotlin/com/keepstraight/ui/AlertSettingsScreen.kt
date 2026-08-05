@@ -23,11 +23,11 @@ import com.keepstraight.ui.components.KeepStraightTopBar
 import com.keepstraight.ui.theme.PhoneCard
 import com.keepstraight.ui.theme.PhoneDimens
 import com.keepstraight.ui.theme.PhonePage
-import com.keepstraight.viewmodel.MainViewModel
+import com.keepstraight.presentation.settings.SettingsViewModel
 
 @Composable
 fun AlertSettingsScreen(
-    viewModel: MainViewModel,
+    viewModel: SettingsViewModel,
     onBack: () -> Unit,
 ) {
     val prefs by viewModel.alertPreferences.collectAsState()
