@@ -1,5 +1,6 @@
 package com.keepstraight.desktop.adb
 
+import com.keepstraight.desktop.presentation.DesktopMessageKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 import java.io.File
@@ -31,8 +32,8 @@ sealed class AdbResult<out T> {
     data class Ok<T>(val value: T) : AdbResult<T>()
     data class Err(
         val kind: AdbErrorKind,
-        val title: String,
-        val body: String,
+        val titleKey: DesktopMessageKey,
+        val bodyKey: DesktopMessageKey,
         val detail: String? = null,
     ) : AdbResult<Nothing>()
 }
@@ -57,16 +58,15 @@ class AdbInstaller(
         } catch (e: Exception) {
             return AdbResult.Err(
                 kind = AdbErrorKind.UNKNOWN,
-                title = "Couldn’t prepare the installer tool",
-                body = "Close other Android tools (Android Studio, platform-tools), then try again. " +
-                    "If it keeps failing, restart KeepStraight.",
+                titleKey = DesktopMessageKey.ADB_PREPARE_FAILED_TITLE,
+                bodyKey = DesktopMessageKey.ADB_PREPARE_FAILED_BODY,
                 detail = e.message,
             )
         }
         return AdbResult.Err(
             kind = AdbErrorKind.ADB_MISSING,
-            title = "Something’s missing on this computer",
-            body = "KeepStraight couldn’t find the tool that installs on phone and watch. Reinstall the desktop app and try again.",
+            titleKey = DesktopMessageKey.ADB_MISSING_TITLE,
+            bodyKey = DesktopMessageKey.ADB_MISSING_BODY,
         )
     }
 
@@ -110,8 +110,8 @@ class AdbInstaller(
         if (h.isEmpty() || pairingPort !in 1..65535 || code.length < 4) {
             return AdbResult.Err(
                 AdbErrorKind.INVALID_INPUT,
-                "Those details don’t look right",
-                "Copy the IP:port and 6‑digit code from Wireless debugging on the device.",
+                titleKey = DesktopMessageKey.ADB_INVALID_INPUT_TITLE,
+                bodyKey = DesktopMessageKey.ADB_INVALID_INPUT_BODY,
             )
         }
         val adb = when (val r = resolveAdb()) {
@@ -122,8 +122,8 @@ class AdbInstaller(
         val output = run(adb, listOf("pair", endpoint, code), timeoutSec = 45)
             ?: return AdbResult.Err(
                 AdbErrorKind.TIMEOUT,
-                "That took too long",
-                "Keep the device awake, Wireless debugging open, and stay on the same Wi‑Fi. Then try again.",
+                titleKey = DesktopMessageKey.ADB_PAIR_TIMEOUT_TITLE,
+                bodyKey = DesktopMessageKey.ADB_PAIR_TIMEOUT_BODY,
             )
         val ok = output.contains("Successfully paired", ignoreCase = true) ||
             output.contains("paired to", ignoreCase = true)
@@ -132,9 +132,8 @@ class AdbInstaller(
         } else {
             AdbResult.Err(
                 AdbErrorKind.PAIR_FAILED,
-                "Couldn’t pair over Wi‑Fi",
-                "Use a fresh pairing code from the device’s Wireless debugging screen. " +
-                    "For phones you can also Pair device with QR code instead of typing.",
+                titleKey = DesktopMessageKey.ADB_PAIR_FAILED_TITLE,
+                bodyKey = DesktopMessageKey.ADB_PAIR_FAILED_BODY,
                 detail = output.takeLast(300),
             )
         }
@@ -146,8 +145,8 @@ class AdbInstaller(
         if (h.isEmpty() || port !in 1..65535) {
             return AdbResult.Err(
                 AdbErrorKind.INVALID_INPUT,
-                "Check the connection address",
-                "Use the IP and port shown at the top of Wireless debugging (e.g. 192.168.1.20:41234).",
+                titleKey = DesktopMessageKey.ADB_CONNECT_INVALID_TITLE,
+                bodyKey = DesktopMessageKey.ADB_CONNECT_INVALID_BODY,
             )
         }
         val adb = when (val r = resolveAdb()) {
@@ -158,8 +157,8 @@ class AdbInstaller(
         val output = run(adb, listOf("connect", endpoint), timeoutSec = 30)
             ?: return AdbResult.Err(
                 AdbErrorKind.TIMEOUT,
-                "Connect timed out",
-                "Same Wi‑Fi? Leave Wireless debugging on, then retry Connect.",
+                titleKey = DesktopMessageKey.ADB_CONNECT_TIMEOUT_TITLE,
+                bodyKey = DesktopMessageKey.ADB_CONNECT_TIMEOUT_BODY,
             )
         val ok = output.contains("connected to", ignoreCase = true) ||
             output.contains("already connected", ignoreCase = true)
@@ -168,8 +167,8 @@ class AdbInstaller(
         } else {
             AdbResult.Err(
                 AdbErrorKind.CONNECT_FAILED,
-                "Couldn’t connect",
-                "If this is the first time, pair with the 6‑digit code first, then connect with the IP:port from Wireless debugging.",
+                titleKey = DesktopMessageKey.ADB_CONNECT_FAILED_TITLE,
+                bodyKey = DesktopMessageKey.ADB_CONNECT_FAILED_BODY,
                 detail = output.takeLast(300),
             )
         }
@@ -183,8 +182,8 @@ class AdbInstaller(
         val output = run(adb, listOf("devices"), timeoutSec = 10)
             ?: return AdbResult.Err(
                 AdbErrorKind.TIMEOUT,
-                "Device scan timed out",
-                "ADB didn’t respond. Toggle Wireless debugging off/on and try again.",
+                titleKey = DesktopMessageKey.ADB_SCAN_TIMEOUT_TITLE,
+                bodyKey = DesktopMessageKey.ADB_SCAN_TIMEOUT_BODY,
             )
         val devices = output.lines()
             .drop(1)
@@ -216,22 +215,22 @@ class AdbInstaller(
         if (devices.isEmpty()) {
             return AdbResult.Err(
                 AdbErrorKind.NO_DEVICE,
-                "No wireless device",
-                "Pair and connect with Wireless debugging first (same Wi‑Fi). Then install.",
+                titleKey = DesktopMessageKey.ADB_NO_DEVICE_TITLE,
+                bodyKey = DesktopMessageKey.ADB_NO_DEVICE_BODY,
             )
         }
         if (devices.any { it.isUnauthorized } && devices.none { it.isReady }) {
             return AdbResult.Err(
                 AdbErrorKind.UNAUTHORIZED,
-                "Authorize this computer",
-                "On the phone/watch, allow the debugging prompt, then retry.",
+                titleKey = DesktopMessageKey.ADB_UNAUTHORIZED_TITLE,
+                bodyKey = DesktopMessageKey.ADB_UNAUTHORIZED_BODY,
             )
         }
         if (devices.any { it.isOffline } && devices.none { it.isReady }) {
             return AdbResult.Err(
                 AdbErrorKind.OFFLINE,
-                "Device offline",
-                "Reconnect wireless debugging (Connect again), keep the screen on, and retry.",
+                titleKey = DesktopMessageKey.ADB_OFFLINE_TITLE,
+                bodyKey = DesktopMessageKey.ADB_OFFLINE_BODY,
             )
         }
         val ready = devices.filter { it.isReady }
@@ -242,21 +241,25 @@ class AdbInstaller(
             ?: ready.firstOrNull { isWatch(adb, it.serial) == wantWatch }
             ?: return AdbResult.Err(
                 AdbErrorKind.NO_DEVICE,
-                if (wantWatch) "The watch isn’t ready" else "The phone isn’t ready",
-                if (wantWatch) {
-                    "Keep the watch awake with Wireless debugging open on the same Wi‑Fi, then try again."
+                titleKey = if (wantWatch) {
+                    DesktopMessageKey.ADB_WATCH_NOT_READY_TITLE
                 } else {
-                    "Keep the phone unlocked with Wireless debugging open, then try again."
+                    DesktopMessageKey.ADB_PHONE_NOT_READY_TITLE
                 },
-                detail = "Connected: " + devices.joinToString { "${it.serial} (${it.state})" },
+                bodyKey = if (wantWatch) {
+                    DesktopMessageKey.ADB_WATCH_NOT_READY_BODY
+                } else {
+                    DesktopMessageKey.ADB_PHONE_NOT_READY_BODY
+                },
+                detail = devices.joinToString { "${it.serial} (${it.state})" },
             )
 
         val args = listOf("-s", target.serial, "install", "-r", apk.absolutePath)
         var output = run(adb, args, timeoutSec = 180)
             ?: return AdbResult.Err(
                 AdbErrorKind.TIMEOUT,
-                "Install timed out",
-                "Stay on the same Wi‑Fi with Wireless debugging open, then retry.",
+                titleKey = DesktopMessageKey.ADB_INSTALL_TIMEOUT_TITLE,
+                bodyKey = DesktopMessageKey.ADB_INSTALL_TIMEOUT_BODY,
             )
         if (output.contains("Success", ignoreCase = true)) {
             launchApp(adb, target.serial, wantWatch)
@@ -270,9 +273,9 @@ class AdbInstaller(
             run(adb, listOf("-s", target.serial, "uninstall", pkg), timeoutSec = 30)
             output = run(adb, args, timeoutSec = 180)
                 ?: return AdbResult.Err(
-                    AdbErrorKind.TIMEOUT,
-                    "Install timed out",
-                    "Removed the old app, but the new install timed out. Try again.",
+                AdbErrorKind.TIMEOUT,
+                titleKey = DesktopMessageKey.ADB_UNINSTALL_RETRY_TIMEOUT_TITLE,
+                bodyKey = DesktopMessageKey.ADB_UNINSTALL_RETRY_TIMEOUT_BODY,
                 )
             if (output.contains("Success", ignoreCase = true)) {
                 launchApp(adb, target.serial, wantWatch)
@@ -281,11 +284,11 @@ class AdbInstaller(
         }
         return AdbResult.Err(
             AdbErrorKind.INSTALL_FAILED,
-            "Install failed",
-            if (wantWatch) {
-                "Couldn’t install KeepStraight on the watch. Check free storage and that Wireless debugging stays open."
+            titleKey = DesktopMessageKey.ADB_INSTALL_FAILED_TITLE,
+            bodyKey = if (wantWatch) {
+                DesktopMessageKey.ADB_INSTALL_FAILED_WATCH_BODY
             } else {
-                "Couldn’t install KeepStraight on the phone. Check free storage and that Wireless debugging stays open."
+                DesktopMessageKey.ADB_INSTALL_FAILED_BODY
             },
             detail = output.takeLast(400),
         )
@@ -486,14 +489,14 @@ class AdbInstaller(
 
         val PHONE_APK_MISSING = AdbResult.Err(
             AdbErrorKind.APK_MISSING,
-            "Phone app package missing",
-            "This desktop build doesn’t include the Android APK yet. Package KeepStraight with keepstraight-phone.apk, then retry.",
+            titleKey = DesktopMessageKey.ADB_PHONE_APK_MISSING_TITLE,
+            bodyKey = DesktopMessageKey.ADB_PHONE_APK_MISSING_BODY,
         )
 
         val WEAR_APK_MISSING = AdbResult.Err(
             AdbErrorKind.APK_MISSING,
-            "Watch app package missing",
-            "Wear APK isn’t bundled. Connect the watch over wireless debugging (or install from the phone) and retry when the package is available.",
+            titleKey = DesktopMessageKey.ADB_WEAR_APK_MISSING_TITLE,
+            bodyKey = DesktopMessageKey.ADB_WEAR_APK_MISSING_BODY,
         )
     }
 }

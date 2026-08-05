@@ -1,5 +1,7 @@
 package com.keepstraight.desktop.bridge
 
+import com.keepstraight.desktop.presentation.DesktopMessageKey
+import com.keepstraight.desktop.presentation.DesktopPrefsKeys
 import com.keepstraight.shared.bridge.DesktopBridgeClient
 import com.keepstraight.shared.bridge.DesktopLanJson
 import com.keepstraight.shared.bridge.DesktopLanProtocol
@@ -23,9 +25,9 @@ class JvmDesktopBridgeClient(
 ) : DesktopBridgeClient {
     private val client = HttpClient(CIO)
 
-    private var host: String? = prefs.get("bridge_host", null)?.ifBlank { null }
-    private var port: Int = prefs.getInt("bridge_port", DesktopLanProtocol.DEFAULT_PORT)
-    private var token: String? = prefs.get("bridge_token", null)?.ifBlank { null }
+    private var host: String? = prefs.get(DesktopPrefsKeys.BRIDGE_HOST, null)?.ifBlank { null }
+    private var port: Int = prefs.getInt(DesktopPrefsKeys.BRIDGE_PORT, DesktopLanProtocol.DEFAULT_PORT)
+    private var token: String? = prefs.get(DesktopPrefsKeys.BRIDGE_TOKEN, null)?.ifBlank { null }
 
     override val isConfigured: Boolean
         get() = !host.isNullOrBlank() && !token.isNullOrBlank()
@@ -39,25 +41,38 @@ class JvmDesktopBridgeClient(
             val body = response.bodyAsText()
             if (!response.status.isSuccess()) {
                 val parsed = DesktopLanJson.parsePairResponse(body)
-                error(parsed?.message?.ifBlank { null } ?: "Pairing failed (${response.status.value})")
+                throw BridgeClientException(
+                    DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
+                    parsed?.message?.ifBlank { null } ?: response.status.value.toString(),
+                )
             }
             val parsed = DesktopLanJson.parsePairResponse(body)
-                ?: error("Invalid pair response")
-            if (!parsed.ok) error(parsed.message.ifBlank { "Pairing rejected" })
-            if (parsed.token.isBlank()) error("Pairing response missing token")
+                ?: throw BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED, "invalid_response")
+            if (!parsed.ok) {
+                throw BridgeClientException(
+                    DesktopMessageKey.BRIDGE_CLIENT_PAIR_REJECTED,
+                    parsed.message.ifBlank { null },
+                )
+            }
+            if (parsed.token.isBlank()) {
+                throw BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_MISSING_TOKEN)
+            }
             this.host = host
             this.port = port
             this.token = parsed.token
-            prefs.put("bridge_host", host)
-            prefs.putInt("bridge_port", port)
-            prefs.put("bridge_token", parsed.token)
+            prefs.put(DesktopPrefsKeys.BRIDGE_HOST, host)
+            prefs.putInt(DesktopPrefsKeys.BRIDGE_PORT, port)
+            prefs.put(DesktopPrefsKeys.BRIDGE_TOKEN, parsed.token)
             parsed.token
         }
     }
 
     override suspend fun sendEvent(event: DesktopSlumpEvent): Result<Unit> {
-        val h = host ?: return Result.failure(IllegalStateException("Not paired"))
-        val t = token ?: return Result.failure(IllegalStateException("Not paired"))
+        if (host == null || token == null) {
+            return Result.failure(BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_NOT_PAIRED))
+        }
+        val h = host!!
+        val t = token!!
         return runCatching {
             val response = client.post("http://$h:$port${DesktopLanProtocol.PATH_EVENT}") {
                 header(DesktopLanProtocol.HEADER_TOKEN, t)
@@ -65,42 +80,60 @@ class JvmDesktopBridgeClient(
                 setBody(DesktopLanJson.eventToJson(event))
             }
             if (response.status.value == 401) {
-                error("unauthorized 401")
+                throw BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_UNAUTHORIZED)
             }
-            check(response.status.isSuccess()) { "Event rejected: ${response.status}" }
+            if (!response.status.isSuccess()) {
+                throw BridgeClientException(
+                    DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
+                    response.status.value.toString(),
+                )
+            }
         }
     }
 
     override suspend fun fetchSettings(): Result<DesktopPhoneSettings> {
-        val h = host ?: return Result.failure(IllegalStateException("Not paired"))
-        val t = token ?: return Result.failure(IllegalStateException("Not paired"))
+        if (host == null || token == null) {
+            return Result.failure(BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_NOT_PAIRED))
+        }
+        val h = host!!
+        val t = token!!
         return runCatching {
             val response = client.get("http://$h:$port${DesktopLanProtocol.PATH_SETTINGS}") {
                 header(DesktopLanProtocol.HEADER_TOKEN, t)
             }
             if (response.status.value == 401) {
-                error("unauthorized 401")
+                throw BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_UNAUTHORIZED)
             }
-            check(response.status.isSuccess()) { "Settings rejected: ${response.status}" }
+            if (!response.status.isSuccess()) {
+                throw BridgeClientException(
+                    DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
+                    response.status.value.toString(),
+                )
+            }
             DesktopLanJson.parseSettings(response.bodyAsText())
-                ?: error("Invalid settings response")
+                ?: throw BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED, "invalid_settings")
         }
     }
 
     suspend fun ping(): Result<Unit> {
-        val h = host ?: return Result.failure(IllegalStateException("Not paired"))
+        val h = host ?: return Result.failure(BridgeClientException(DesktopMessageKey.BRIDGE_CLIENT_NOT_PAIRED))
         return runCatching {
             val response = client.get("http://$h:$port${DesktopLanProtocol.PATH_PING}")
-            check(response.status.isSuccess()) { "Ping failed: ${response.status}" }
+            if (!response.status.isSuccess()) {
+                throw BridgeClientException(
+                    DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
+                    response.status.value.toString(),
+                )
+            }
         }
     }
 
     override fun clear() {
         host = null
         token = null
-        prefs.remove("bridge_host")
-        prefs.remove("bridge_token")
-        prefs.remove("bridge_port")
+        prefs.remove(DesktopPrefsKeys.BRIDGE_HOST)
+        prefs.remove(DesktopPrefsKeys.BRIDGE_TOKEN)
+        prefs.remove(DesktopPrefsKeys.BRIDGE_PORT)
     }
 
     fun close() {

@@ -1,25 +1,21 @@
 package com.keepstraight.desktop
 
+import com.keepstraight.desktop.presentation.DesktopMessageKey
+import com.keepstraight.desktop.ui.i18n.DesktopMessageJvm
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-/**
- * Registers KeepStraight to start at login (macOS LaunchAgent, Windows Run key,
- * XDG autostart).
- *
- * Resolves a launcher in this order:
- * 1. Packaged app (`jpackage.app-path`)
- * 2. Repo `gradlew :desktopApp:run` (dev / `./gradlew :desktopApp:run`)
- * 3. Current JVM command line ([ProcessHandle])
- */
 object LoginItemManager {
 
-    data class Result(val enabled: Boolean, val message: String)
+    data class Result(
+        val enabled: Boolean,
+        val messageKey: DesktopMessageKey? = null,
+        val override: String? = null,
+    )
 
     private data class LaunchSpec(
         val programArgs: List<String>,
         val workingDirectory: String?,
-        /** Absolute path written into the login item so we can detect “enabled”. */
         val markerPath: String,
     )
 
@@ -41,7 +37,7 @@ object LoginItemManager {
     fun setEnabled(enabled: Boolean): Result {
         val spec = resolveLaunchSpec() ?: return Result(
             enabled = false,
-            message = "Couldn’t find a way to relaunch KeepStraight on this machine.",
+            messageKey = DesktopMessageKey.LOGIN_NO_LAUNCHER,
         )
         return try {
             val ok = when {
@@ -50,14 +46,23 @@ object LoginItemManager {
                 else -> if (enabled) writeLinux(spec) else removeLinux()
             }
             when {
-                ok && enabled -> Result(true, "KeepStraight will start when you log in.")
-                ok -> Result(false, "KeepStraight won’t start automatically.")
-                enabled -> Result(false, "Couldn’t register KeepStraight to start at login.")
-                else -> Result(false, "KeepStraight won’t start automatically.")
+                ok && enabled -> Result(true, DesktopMessageKey.LOGIN_ENABLED)
+                ok -> Result(false, DesktopMessageKey.LOGIN_DISABLED)
+                enabled -> Result(false, DesktopMessageKey.LOGIN_REGISTER_FAILED)
+                else -> Result(false, DesktopMessageKey.LOGIN_DISABLED)
             }
         } catch (e: Exception) {
-            Result(isEnabled(), e.message ?: "Couldn’t change the login setting.")
+            Result(
+                enabled = isEnabled(),
+                messageKey = DesktopMessageKey.LOGIN_CHANGE_FAILED,
+                override = e.message,
+            )
         }
+    }
+
+    fun resolveMessage(result: Result): String? {
+        val key = result.messageKey ?: return null
+        return result.override ?: DesktopMessageJvm.text(key)
     }
 
     private fun resolveLaunchSpec(): LaunchSpec? {
@@ -155,7 +160,6 @@ $workingXml
             </plist>
             """.trimIndent() + "\n",
         )
-        // Load/replace so login item is recognized immediately.
         runCapture(listOf("launchctl", "unload", plist.absolutePath), timeoutSec = 5)
         runCapture(listOf("launchctl", "load", plist.absolutePath), timeoutSec = 5)
         return plist.isFile

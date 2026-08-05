@@ -1,5 +1,7 @@
 package com.keepstraight.desktop.alert
 
+import com.keepstraight.desktop.presentation.DesktopMessageKey
+import com.keepstraight.desktop.ui.i18n.DesktopMessageJvm
 import com.keepstraight.shared.domain.DesktopAlertEvent
 import java.awt.Toolkit
 
@@ -11,10 +13,10 @@ class DesktopAlerter(
     private val notificationEnabled: () -> Boolean = { true },
 ) {
     fun alert(event: DesktopAlertEvent) {
-        val title = "KeepStraight"
+        val title = DesktopMessageJvm.text(DesktopMessageKey.ALERT_APP_NAME)
         val message = when (event) {
-            DesktopAlertEvent.SLUMP_INITIAL -> "You've been slouching — sit up straight."
-            DesktopAlertEvent.SLUMP_REPEAT -> "Still slouching — sit up."
+            DesktopAlertEvent.SLUMP_INITIAL -> DesktopMessageJvm.text(DesktopMessageKey.ALERT_SLOUCH_INITIAL)
+            DesktopAlertEvent.SLUMP_REPEAT -> DesktopMessageJvm.text(DesktopMessageKey.ALERT_SLOUCH_REPEAT)
         }
 
         var notified = false

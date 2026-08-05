@@ -7,6 +7,10 @@ import com.keepstraight.desktop.presentation.bridge.BridgeStore
 import com.keepstraight.desktop.presentation.camera.CameraStore
 import com.keepstraight.desktop.presentation.session.SessionStore
 import com.keepstraight.shared.model.SensitivityLevel
+import com.keepstraight.desktop.presentation.DesktopMessageKey
+import com.keepstraight.desktop.presentation.DesktopPrefsKeys
+import com.keepstraight.desktop.presentation.UserMessage
+import com.keepstraight.desktop.ui.i18n.DesktopMessageJvm
 import com.keepstraight.shared.presentation.DesktopStatusAction
 import com.keepstraight.shared.presentation.DesktopStatusPresentation
 import androidx.compose.ui.graphics.ImageBitmap
@@ -74,27 +78,27 @@ class DesktopSessionController(
 
     val openAtLoginAvailable: Boolean = LoginItemManager.isAvailable()
 
-    private val _openAtLoginMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(
+    private val _openAtLoginMessage = kotlinx.coroutines.flow.MutableStateFlow<UserMessage?>(
         if (LoginItemManager.isAvailable()) {
             null
         } else {
-            "Couldn't find a launcher for Open at login on this machine."
+            UserMessage(DesktopMessageKey.LOGIN_OPEN_AT_UNAVAILABLE)
         },
     )
-    val openAtLoginMessage: StateFlow<String?> = _openAtLoginMessage
+    val openAtLoginMessage: StateFlow<UserMessage?> = _openAtLoginMessage
 
     private val _desktopSoundEnabled = kotlinx.coroutines.flow.MutableStateFlow(
-        prefs.getBoolean("desktop_sound_enabled", false),
+        prefs.getBoolean(DesktopPrefsKeys.DESKTOP_SOUND_ENABLED, false),
     )
     val desktopSoundEnabled: StateFlow<Boolean> = _desktopSoundEnabled
 
     private val _desktopNotificationEnabled = kotlinx.coroutines.flow.MutableStateFlow(
-        prefs.getBoolean("desktop_notification_enabled", true),
+        prefs.getBoolean(DesktopPrefsKeys.DESKTOP_NOTIFICATION_ENABLED, true),
     )
     val desktopNotificationEnabled: StateFlow<Boolean> = _desktopNotificationEnabled
 
     private val _startHiddenInTray = kotlinx.coroutines.flow.MutableStateFlow(
-        prefs.getBoolean("start_hidden_in_tray", false),
+        prefs.getBoolean(DesktopPrefsKeys.START_HIDDEN_IN_TRAY, false),
     )
     val startHiddenInTray: StateFlow<Boolean> = _startHiddenInTray
 
@@ -105,52 +109,58 @@ class DesktopSessionController(
     fun handleStatusAction(action: DesktopStatusAction) = sessionStore.handleStatusAction(action)
 
     fun setDesktopSoundEnabled(value: Boolean) {
-        prefs.putBoolean("desktop_sound_enabled", value)
+        prefs.putBoolean(DesktopPrefsKeys.DESKTOP_SOUND_ENABLED, value)
         _desktopSoundEnabled.value = value
     }
 
     fun setDesktopNotificationEnabled(value: Boolean) {
-        prefs.putBoolean("desktop_notification_enabled", value)
+        prefs.putBoolean(DesktopPrefsKeys.DESKTOP_NOTIFICATION_ENABLED, value)
         _desktopNotificationEnabled.value = value
     }
 
     fun sendTestDesktopNotification() {
         scope.launch(Dispatchers.IO) {
             val result = NativeDesktopNotifier.notify(
-                "KeepStraight",
-                "Test notification — if you see this, alerts will work in the tray.",
+                DesktopMessageJvm.text(DesktopMessageKey.TEST_NOTIFICATION_TITLE),
+                DesktopMessageJvm.text(DesktopMessageKey.TEST_NOTIFICATION_BODY),
             )
             bridgeStore.setBridgeActionMessage(
                 when {
-                    result.shown && !result.limited -> "Test notification sent."
-                    result.shown -> "Test notification: ${result.detail ?: "limited"}"
-                    else -> "Test notification failed: ${result.detail ?: "unknown error"}"
+                    result.shown && !result.limited -> UserMessage(DesktopMessageKey.TEST_NOTIFICATION_SENT)
+                    result.shown -> UserMessage(
+                        DesktopMessageKey.TEST_NOTIFICATION_LIMITED,
+                        listOf(result.detail ?: DesktopMessageKey.TEST_NOTIFICATION_LIMITED.name),
+                    )
+                    else -> UserMessage(
+                        DesktopMessageKey.TEST_NOTIFICATION_FAILED,
+                        listOf(result.detail ?: DesktopMessageKey.TEST_NOTIFICATION_FAILED.name),
+                    )
                 },
             )
         }
     }
 
     fun noteHiddenToTray() {
-        if (prefs.getBoolean("tray_hint_shown", false)) return
-        prefs.putBoolean("tray_hint_shown", true)
+        if (prefs.getBoolean(DesktopPrefsKeys.TRAY_HINT_SHOWN, false)) return
+        prefs.putBoolean(DesktopPrefsKeys.TRAY_HINT_SHOWN, true)
         val os = System.getProperty("os.name").orEmpty().lowercase()
-        val where = when {
-            os.contains("mac") -> "the menu bar"
-            os.contains("win") -> "the notification area"
-            else -> "the system tray"
+        val whereKey = when {
+            os.contains("mac") -> DesktopMessageKey.TRAY_WHERE_MENU_BAR
+            os.contains("win") -> DesktopMessageKey.TRAY_WHERE_NOTIFICATION
+            else -> DesktopMessageKey.TRAY_WHERE_SYSTEM_TRAY
         }
         scope.launch {
             withContext(Dispatchers.IO) {
                 NativeDesktopNotifier.notify(
-                    "KeepStraight is still running",
-                    "Click the KeepStraight icon in $where to bring the window back.",
+                    DesktopMessageJvm.text(DesktopMessageKey.TRAY_STILL_RUNNING),
+                    DesktopMessageJvm.text(DesktopMessageKey.TRAY_CLICK_ICON, DesktopMessageJvm.text(whereKey)),
                 )
             }
         }
     }
 
     fun setStartHiddenInTray(value: Boolean) {
-        prefs.putBoolean("start_hidden_in_tray", value)
+        prefs.putBoolean(DesktopPrefsKeys.START_HIDDEN_IN_TRAY, value)
         _startHiddenInTray.value = value
     }
 
@@ -169,7 +179,9 @@ class DesktopSessionController(
     fun setOpenAtLogin(value: Boolean) {
         val result = LoginItemManager.setEnabled(value)
         _openAtLogin.value = result.enabled
-        _openAtLoginMessage.value = result.message
+        _openAtLoginMessage.value = result.messageKey?.let {
+            UserMessage(it, override = result.override)
+        }
     }
 
     fun setSensitivity(level: SensitivityLevel) = sessionStore.setSensitivity(level)
@@ -194,7 +206,7 @@ class DesktopSessionController(
 
     fun cancelCalibration() = sessionStore.cancelCalibration()
 
-    fun pairPhone(host: String, code: String, onResult: (String) -> Unit) =
+    fun pairPhone(host: String, code: String, onResult: (UserMessage) -> Unit) =
         bridgeStore.pairPhone(host, code, onResult)
 
     fun showPairQr() = bridgeStore.showPairQr()

@@ -1,5 +1,8 @@
 package com.keepstraight.desktop.ui.wizard
 
+import com.keepstraight.desktop.presentation.UserMessage
+import com.keepstraight.desktop.ui.i18n.DesktopMessageResolver
+import com.keepstraight.desktop.ui.i18n.DesktopStrings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -54,26 +57,26 @@ fun CompanionSetupFlow(
 
     when (step) {
         CompanionSetupStep.Hub -> DesktopPage {
-            Text("Phone & watch", style = MaterialTheme.typography.headlineLarge)
+            Text(DesktopStrings.wizardPhoneWatchTitle(), style = MaterialTheme.typography.headlineLarge)
             Text(
-                "Optional add-ons — pick any step, or skip them all. Suggested order: watch first, then phone, then link.",
+                DesktopStrings.wizardHubIntro(),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             DesktopInfoPanel(
                 title = when (bridgeState) {
-                    BridgeConnectionState.PAIRED -> "Phone link: connected"
-                    BridgeConnectionState.DEGRADED -> "Phone link: needs reconnect"
-                    BridgeConnectionState.FAILED -> "Phone link: expired — scan a new QR"
-                    BridgeConnectionState.NOT_CONFIGURED -> "Phone link: not set up"
+                    BridgeConnectionState.PAIRED -> DesktopStrings.wizardHubLinkPaired()
+                    BridgeConnectionState.DEGRADED -> DesktopStrings.wizardHubLinkDegraded()
+                    BridgeConnectionState.FAILED -> DesktopStrings.wizardHubLinkFailed()
+                    BridgeConnectionState.NOT_CONFIGURED -> DesktopStrings.wizardHubLinkNotSetup()
                 },
                 body = when (bridgeState) {
                     BridgeConnectionState.PAIRED ->
-                        "History and watch alerts go through the phone. You can still reinstall apps below."
+                        DesktopStrings.wizardHubBodyPaired()
                     BridgeConnectionState.NOT_CONFIGURED ->
-                        "Install the watch app before the phone so the phone can see it. Linking is only needed for history and wrist alerts — desktop works alone."
+                        DesktopStrings.wizardHubBodyNotSetup()
                     else ->
-                        "Use “Link phone” for a fresh QR, or reconnect from Home if the token is still valid."
+                        DesktopStrings.wizardHubBodyElse()
                 },
             )
             DesktopCard {
@@ -82,25 +85,25 @@ fun CompanionSetupFlow(
                     modifier = Modifier.fillMaxWidth(),
                     colors = desktopPrimaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("1. Install watch app") }
+                ) { Text(DesktopStrings.wizardStepInstallWatch()) }
                 OutlinedButton(
                     onClick = { step = CompanionSetupStep.InstallPhone },
                     modifier = Modifier.fillMaxWidth(),
                     colors = desktopSecondaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("2. Install phone app") }
+                ) { Text(DesktopStrings.wizardStepInstallPhone()) }
                 OutlinedButton(
                     onClick = { step = CompanionSetupStep.LinkPhone },
                     modifier = Modifier.fillMaxWidth(),
                     colors = desktopSecondaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("3. Link phone to desktop") }
+                ) { Text(DesktopStrings.wizardStepLinkPhone()) }
                 Button(
                     onClick = onFinished,
                     modifier = Modifier.fillMaxWidth(),
                     colors = desktopPrimaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("Done") }
+                ) { Text(DesktopStrings.actionDone()) }
             }
         }
         CompanionSetupStep.InstallPhone -> WirelessPhoneInstallStep(
@@ -146,41 +149,49 @@ private fun LinkPhoneQrStep(
     }
 
     DesktopPage {
-        Text("Link phone to desktop", style = MaterialTheme.typography.headlineLarge)
+        Text(DesktopStrings.wizardLinkTitle(), style = MaterialTheme.typography.headlineLarge)
         Text(
-            "This is only the KeepStraight link (not ADB). Open the phone app → scan this code. Same Wi‑Fi.",
+            DesktopStrings.wizardLinkBody(),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         DesktopInfoPanel(
-            title = "Need the phone app first?",
-            body = "If KeepStraight isn’t on the phone yet, go back and choose Install phone app. Linking doesn’t install anything.",
+            title = DesktopStrings.wizardLinkNeedPhoneTitle(),
+            body = DesktopStrings.wizardLinkNeedPhoneBody(),
         )
         DesktopCard {
             if (qrActive && qrBitmap != null) {
                 Image(
                     bitmap = qrBitmap!!,
-                    contentDescription = "QR to link KeepStraight phone",
+                    contentDescription = DesktopStrings.wizardLinkQrCd(),
                     modifier = Modifier
                         .size(240.dp)
                         .clip(RoundedCornerShape(DesktopDimens.radiusMedium)),
                 )
-                Text("Waiting for your phone…", fontWeight = FontWeight.Medium)
+                Text(DesktopStrings.wizardLinkWaiting(), fontWeight = FontWeight.Medium)
             } else {
                 DesktopErrorPanel(
-                    title = "Couldn’t show a QR",
-                    body = "Try again. Check that nothing else is using the pairing port.",
-                    primaryLabel = "Try again",
+                    title = DesktopStrings.wizardLinkQrErrorTitle(),
+                    body = DesktopStrings.wizardLinkQrErrorBody(),
+                    primaryLabel = DesktopStrings.actionTryAgain(),
                     onPrimary = controller::showPairQr,
-                    secondaryLabel = "Back",
+                    secondaryLabel = DesktopStrings.actionBack(),
                     onSecondary = onSkip,
                 )
             }
             pairMessage?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    DesktopMessageResolver.text(it).orEmpty(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             bridgeMsg?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    DesktopMessageResolver.text(it).orEmpty(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(DesktopDimens.rowGap)) {
                 OutlinedButton(
@@ -190,15 +201,15 @@ private fun LinkPhoneQrStep(
                     },
                     colors = desktopSecondaryButtonColors(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                ) { Text("New QR") }
+                ) { Text(DesktopStrings.actionNewQr()) }
                 if (bridgeState == BridgeConnectionState.PAIRED) {
                     Button(
                         onClick = onContinue,
                         colors = desktopPrimaryButtonColors(),
                         shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                    ) { Text("Done linking") }
+                    ) { Text(DesktopStrings.actionDoneLinking()) }
                 }
-                TextButton(onClick = onSkip) { Text("Back") }
+                TextButton(onClick = onSkip) { Text(DesktopStrings.actionBack()) }
             }
         }
     }

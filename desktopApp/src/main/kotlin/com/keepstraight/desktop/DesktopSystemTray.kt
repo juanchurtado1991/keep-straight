@@ -11,9 +11,14 @@ import java.awt.SystemTray
 
 /**
  * Single AWT system-tray icon: menu + displayMessage notifications.
- * Icon matches the Android launcher (teal #2E7D6F + white ring/plus).
  */
 class DesktopSystemTray {
+    data class Labels(
+        val tooltip: String,
+        val open: String,
+        val hide: String,
+        val quit: String,
+    )
     private val trayIcon = AtomicReference<java.awt.TrayIcon?>(null)
     private val onOpen = AtomicReference<() -> Unit>({})
     private val onHide = AtomicReference<() -> Unit>({})
@@ -29,21 +34,21 @@ class DesktopSystemTray {
         onQuit.set(quit)
     }
 
-    fun install(): Boolean {
+    fun install(labels: Labels): Boolean {
         if (!SystemTray.isSupported()) return false
         if (trayIcon.get() != null) return true
         return try {
-            val icon = java.awt.TrayIcon(loadTrayImage(), "KeepStraight").apply {
+            val icon = java.awt.TrayIcon(loadTrayImage(), labels.tooltip).apply {
                 isImageAutoSize = true
                 popupMenu = PopupMenu().apply {
-                    add(MenuItem("Open KeepStraight").also {
+                    add(MenuItem(labels.open).also {
                         it.addActionListener { onOpen.get().invoke() }
                     })
-                    add(MenuItem("Hide").also {
+                    add(MenuItem(labels.hide).also {
                         it.addActionListener { onHide.get().invoke() }
                     })
                     addSeparator()
-                    add(MenuItem("Quit").also {
+                    add(MenuItem(labels.quit).also {
                         it.addActionListener { onQuit.get().invoke() }
                     })
                 }

@@ -8,10 +8,12 @@ import com.keepstraight.shared.bridge.DesktopSlumpEventType
 import com.keepstraight.shared.domain.CalibrationPhase
 import com.keepstraight.shared.domain.DesktopPostureSession
 import com.keepstraight.shared.domain.DesktopSessionPhase
+import com.keepstraight.desktop.presentation.DesktopPrefsKeys
 import com.keepstraight.shared.model.SensitivityLevel
 import com.keepstraight.shared.presentation.DesktopStatusAction
 import com.keepstraight.shared.presentation.DesktopStatusMapper
 import com.keepstraight.shared.presentation.DesktopStatusPresentation
+import com.keepstraight.shared.presentation.StatusCopyKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
@@ -42,7 +44,8 @@ class SessionStore(
             hasCalibration = ui.hasCalibration,
             isSlumped = ui.isSlumped,
             slumpScore = ui.slumpScore,
-            statusMessage = ui.statusMessage,
+            statusKey = ui.statusKey,
+            statusArgs = ui.statusArgs,
             issue = ui.issue,
             bridgeState = bridge,
             modelReady = ui.modelReady,
@@ -57,7 +60,8 @@ class SessionStore(
             hasCalibration = false,
             isSlumped = false,
             slumpScore = 0f,
-            statusMessage = "Start a session to monitor posture.",
+            statusKey = StatusCopyKey.BODY_START_SESSION,
+            statusArgs = emptyList(),
             issue = null,
             bridgeState = bridgeStore.bridgeState.value,
             modelReady = true,
@@ -80,12 +84,12 @@ class SessionStore(
 
     fun applyLocalSettings() {
         val sensitivity = runCatching {
-            SensitivityLevel.valueOf(prefs.get("sensitivity", SensitivityLevel.NORMAL.name))
+            SensitivityLevel.valueOf(prefs.get(DesktopPrefsKeys.SENSITIVITY, SensitivityLevel.NORMAL.name))
         }.getOrDefault(SensitivityLevel.NORMAL)
         session.updateSensitivity(sensitivity)
         session.updateTimers(
-            slumpDurationThresholdMs = prefs.getLong("slump_duration_ms", 30_000L),
-            repeatAlertIntervalMs = prefs.getLong("repeat_alert_ms", 5_000L),
+            slumpDurationThresholdMs = prefs.getLong(DesktopPrefsKeys.SLUMP_DURATION_MS, 30_000L),
+            repeatAlertIntervalMs = prefs.getLong(DesktopPrefsKeys.REPEAT_ALERT_MS, 5_000L),
         )
     }
 
@@ -108,22 +112,22 @@ class SessionStore(
 
     fun setSensitivity(level: SensitivityLevel) {
         if (session.uiState.value.settingsFromPhone) return
-        prefs.put("sensitivity", level.name)
+        prefs.put(DesktopPrefsKeys.SENSITIVITY, level.name)
         session.updateSensitivity(level)
         session.currentCalibration()?.let { CalibrationStore.save(prefs, it) }
     }
 
     fun setSlumpDurationMs(ms: Long) {
         if (session.uiState.value.settingsFromPhone) return
-        prefs.putLong("slump_duration_ms", ms)
-        session.updateTimers(ms, prefs.getLong("repeat_alert_ms", 5_000L))
+        prefs.putLong(DesktopPrefsKeys.SLUMP_DURATION_MS, ms)
+        session.updateTimers(ms, prefs.getLong(DesktopPrefsKeys.REPEAT_ALERT_MS, 5_000L))
         session.currentCalibration()?.let { CalibrationStore.save(prefs, it) }
     }
 
     fun setRepeatAlertMs(ms: Long) {
         if (session.uiState.value.settingsFromPhone) return
-        prefs.putLong("repeat_alert_ms", ms)
-        session.updateTimers(prefs.getLong("slump_duration_ms", 30_000L), ms)
+        prefs.putLong(DesktopPrefsKeys.REPEAT_ALERT_MS, ms)
+        session.updateTimers(prefs.getLong(DesktopPrefsKeys.SLUMP_DURATION_MS, 30_000L), ms)
         session.currentCalibration()?.let { CalibrationStore.save(prefs, it) }
     }
 

@@ -1,5 +1,6 @@
 package com.keepstraight.desktop.adb
 
+import com.keepstraight.desktop.presentation.DesktopMessageKey
 import androidx.compose.ui.graphics.ImageBitmap
 import com.keepstraight.desktop.ui.QrCodeBitmap
 import kotlinx.coroutines.Dispatchers
@@ -57,8 +58,8 @@ object WirelessAdbQr {
         discover(PAIRING_TYPE, serviceName, timeoutMs)
             ?: AdbResult.Err(
                 AdbErrorKind.PAIR_FAILED,
-                "Still waiting for your phone",
-                "On the phone open Wireless debugging → Pair device with QR code, then scan the code on this screen. Stay on the same Wi‑Fi.",
+                titleKey = DesktopMessageKey.ADB_QR_WAITING_PHONE_TITLE,
+                bodyKey = DesktopMessageKey.ADB_QR_WAITING_PHONE_BODY,
             )
     }
 
@@ -86,8 +87,8 @@ object WirelessAdbQr {
         val any = discover(CONNECT_TYPE, serviceNameFilter = null, timeoutMs, preferredHost)
         any ?: AdbResult.Err(
             AdbErrorKind.CONNECT_FAILED,
-            "Almost there — couldn’t finish connecting",
-            "Pairing worked, but the phone didn’t show up for install. Leave Wireless debugging on and tap Try again.",
+            titleKey = DesktopMessageKey.ADB_QR_CONNECT_FAILED_TITLE,
+            bodyKey = DesktopMessageKey.ADB_QR_CONNECT_FAILED_BODY,
         )
     }
 
@@ -136,8 +137,8 @@ object WirelessAdbQr {
         } catch (e: Exception) {
             AdbResult.Err(
                 AdbErrorKind.UNKNOWN,
-                "Couldn’t look for your phone on Wi‑Fi",
-                "Check that this computer and the phone are on the same network (guest Wi‑Fi often blocks this).",
+                titleKey = DesktopMessageKey.ADB_QR_BROWSE_FAILED_TITLE,
+                bodyKey = DesktopMessageKey.ADB_QR_BROWSE_FAILED_BODY,
                 detail = e.message,
             )
         } finally {
@@ -173,25 +174,24 @@ object WirelessAdbQr {
  */
 suspend fun AdbInstaller.pairConnectViaQr(
     offer: WirelessPairOffer,
-    onStatus: (String) -> Unit = {},
+    onStatus: (DesktopMessageKey) -> Unit = {},
 ): AdbResult<String> {
-    onStatus("Waiting for you to scan the QR on your phone…")
+    onStatus(DesktopMessageKey.ADB_QR_WAITING)
     val pairing = when (val r = WirelessAdbQr.awaitPairingEndpoint(offer.serviceName)) {
         is AdbResult.Ok -> r.value
         is AdbResult.Err -> return r
     }
-    onStatus("Phone found — pairing…")
+    onStatus(DesktopMessageKey.ADB_QR_PHONE_FOUND)
     when (val r = pairWireless(pairing.host, pairing.port, offer.password)) {
         is AdbResult.Ok -> Unit
         is AdbResult.Err -> return r
     }
-    onStatus("Connecting for install…")
+    onStatus(DesktopMessageKey.ADB_CONNECTING_INSTALL)
     val connect = when (
         val r = WirelessAdbQr.awaitConnectEndpoint(preferredHost = pairing.host)
     ) {
         is AdbResult.Ok -> r.value
         is AdbResult.Err -> {
-            // Fallback: try common path — some devices keep pairing port semantics.
             return r
         }
     }
@@ -199,9 +199,8 @@ suspend fun AdbInstaller.pairConnectViaQr(
         is AdbResult.Ok -> Unit
         is AdbResult.Err -> return r
     }
-    val serial = "${connect.host}:${connect.port}"
-    onStatus("Connected. Ready to install.")
-    return AdbResult.Ok(serial)
+    onStatus(DesktopMessageKey.ADB_QR_CONNECTED)
+    return AdbResult.Ok("${connect.host}:${connect.port}")
 }
 
 /**
@@ -212,28 +211,28 @@ suspend fun AdbInstaller.pairOrConnect(
     host: String,
     port: Int,
     pairingCode: String?,
-    onStatus: (String) -> Unit = {},
+    onStatus: (DesktopMessageKey) -> Unit = {},
 ): AdbResult<String> {
     if (pairingCode.isNullOrBlank()) {
-        onStatus("Connecting to the watch…")
+        onStatus(DesktopMessageKey.ADB_CONNECTING_WATCH)
         return when (val r = connectWireless(host, port)) {
             is AdbResult.Ok -> AdbResult.Ok("$host:$port")
             is AdbResult.Err -> r
         }
     }
 
-    onStatus("Pairing with the watch…")
+    onStatus(DesktopMessageKey.ADB_PAIRING_WATCH)
     when (val r = pairWireless(host, port, pairingCode)) {
         is AdbResult.Ok -> Unit
         is AdbResult.Err -> return r
     }
-    onStatus("Paired — finding the debug port…")
+    onStatus(DesktopMessageKey.ADB_PAIRED_FINDING_PORT)
     val connect = when (val r = WirelessAdbQr.awaitConnectEndpoint(preferredHost = host)) {
         is AdbResult.Ok -> r.value
         is AdbResult.Err -> return AdbResult.Err(
             AdbErrorKind.CONNECT_FAILED,
-            "Paired, but couldn’t find the debug port",
-            "Pairing worked. Now type the IP:port at the top of Wireless debugging on the watch (not the pairing port) and leave the code empty.",
+            titleKey = DesktopMessageKey.ADB_WATCH_DEBUG_PORT_TITLE,
+            bodyKey = DesktopMessageKey.ADB_WATCH_DEBUG_PORT_BODY,
             detail = r.detail,
         )
     }
@@ -241,6 +240,6 @@ suspend fun AdbInstaller.pairOrConnect(
         is AdbResult.Ok -> Unit
         is AdbResult.Err -> return r
     }
-    onStatus("Connected. Ready to install.")
+    onStatus(DesktopMessageKey.ADB_QR_CONNECTED)
     return AdbResult.Ok("${connect.host}:${connect.port}")
 }

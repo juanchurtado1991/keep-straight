@@ -5,6 +5,12 @@ import com.keepstraight.desktop.CalibrationStore
 import com.keepstraight.desktop.bridge.DesktopPairAssistServer
 import com.keepstraight.desktop.bridge.JvmDesktopBridgeClient
 import com.keepstraight.desktop.ui.QrCodeBitmap
+import com.keepstraight.desktop.bridge.BridgeClientException
+import com.keepstraight.desktop.presentation.BridgeErrorMapper
+import com.keepstraight.desktop.presentation.DesktopMessageKey
+import com.keepstraight.desktop.presentation.DesktopPrefsKeys
+import com.keepstraight.desktop.presentation.UserMessage
+import com.keepstraight.desktop.ui.i18n.DesktopMessageJvm
 import com.keepstraight.shared.bridge.DesktopLanProtocol
 import com.keepstraight.shared.bridge.DesktopPairingQr
 import com.keepstraight.shared.bridge.DesktopSlumpEvent
@@ -50,7 +56,7 @@ class BridgeStore(
     val bridgeState: StateFlow<BridgeConnectionState> = _bridgeState.asStateFlow()
 
     private val _bridgeHost = MutableStateFlow(
-        if (bridge.isConfigured) prefs.get("bridge_host", "") else "",
+        if (bridge.isConfigured) prefs.get(DesktopPrefsKeys.BRIDGE_HOST, "") else "",
     )
     val bridgeHost: StateFlow<String> = _bridgeHost.asStateFlow()
 
@@ -60,11 +66,11 @@ class BridgeStore(
     private val _qrPairingActive = MutableStateFlow(false)
     val qrPairingActive: StateFlow<Boolean> = _qrPairingActive.asStateFlow()
 
-    private val _pairMessage = MutableStateFlow<String?>(null)
-    val pairMessage: StateFlow<String?> = _pairMessage.asStateFlow()
+    private val _pairMessage = MutableStateFlow<UserMessage?>(null)
+    val pairMessage: StateFlow<UserMessage?> = _pairMessage.asStateFlow()
 
-    private val _bridgeActionMessage = MutableStateFlow<String?>(null)
-    val bridgeActionMessage: StateFlow<String?> = _bridgeActionMessage.asStateFlow()
+    private val _bridgeActionMessage = MutableStateFlow<UserMessage?>(null)
+    val bridgeActionMessage: StateFlow<UserMessage?> = _bridgeActionMessage.asStateFlow()
 
     private val _bridgeActionBusy = MutableStateFlow(false)
     val bridgeActionBusy: StateFlow<Boolean> = _bridgeActionBusy.asStateFlow()
@@ -81,30 +87,27 @@ class BridgeStore(
         if (_bridgeActionBusy.value) return
         if (!bridge.isConfigured) {
             _bridgeState.value = BridgeConnectionState.NOT_CONFIGURED
-            _bridgeActionMessage.value = "Phone isn't linked yet. Use Set up phone & watch."
+            _bridgeActionMessage.value = UserMessage(DesktopMessageKey.BRIDGE_NOT_LINKED_SETUP)
             return
         }
         _bridgeActionBusy.value = true
-        _bridgeActionMessage.value = "Checking the link to your phone…"
+        _bridgeActionMessage.value = UserMessage(DesktopMessageKey.BRIDGE_CHECKING)
         scope.launch {
             val ping = bridge.ping()
             if (ping.isFailure) {
                 _bridgeState.value = BridgeConnectionState.DEGRADED
-                _bridgeActionMessage.value =
-                    "Can't reach the phone. Same Wi‑Fi? Open KeepStraight on the phone, then try again."
+                _bridgeActionMessage.value = UserMessage(DesktopMessageKey.BRIDGE_CANT_REACH)
                 _bridgeActionBusy.value = false
                 return@launch
             }
             syncSettingsFromPhone()
             if (_bridgeState.value == BridgeConnectionState.FAILED) {
-                _bridgeActionMessage.value =
-                    "The phone rejected this computer. Clear the link and scan a new QR."
+                _bridgeActionMessage.value = UserMessage(DesktopMessageKey.BRIDGE_REJECTED)
             } else if (_bridgeState.value == BridgeConnectionState.DEGRADED) {
-                _bridgeActionMessage.value =
-                    "Still having trouble syncing. Keep the phone app open and try again."
+                _bridgeActionMessage.value = UserMessage(DesktopMessageKey.BRIDGE_SYNC_TROUBLE)
             } else {
                 _bridgeState.value = BridgeConnectionState.PAIRED
-                _bridgeActionMessage.value = "Phone link looks good."
+                _bridgeActionMessage.value = UserMessage(DesktopMessageKey.BRIDGE_LOOKS_GOOD)
                 startSettingsSync()
                 startWorkSampleSync()
             }
@@ -116,15 +119,14 @@ class BridgeStore(
         _bridgeActionMessage.value = null
     }
 
-    fun setBridgeActionMessage(message: String?) {
+    fun setBridgeActionMessage(message: UserMessage?) {
         _bridgeActionMessage.value = message
     }
 
-    fun pairPhone(host: String, code: String, onResult: (String) -> Unit) {
-        // Kept for tests / fallback; UI uses QR pairing.
+    fun pairPhone(host: String, code: String, onResult: (UserMessage) -> Unit) {
         if (host.isBlank() || code.isBlank()) {
-            session.setIssue(DesktopIssue.BridgePairFailed("Missing phone host or code."))
-            onResult("Missing phone host or code.")
+            session.setIssue(DesktopIssue.BridgePairFailed(""))
+            onResult(UserMessage(DesktopMessageKey.BRIDGE_MISSING_HOST_CODE))
             return
         }
         scope.launch {
@@ -137,7 +139,7 @@ class BridgeStore(
         val previous = pairAssist
         pairAssist = null
         _pairQrBitmap.value = null
-        _pairMessage.value = "Getting a code ready…"
+        _pairMessage.value = UserMessage(DesktopMessageKey.BRIDGE_GETTING_CODE)
         _qrPairingActive.value = true
         scope.launch {
             awaitPairAssistStopped(previous)
@@ -145,7 +147,7 @@ class BridgeStore(
             val offer = withContext(Dispatchers.IO) { assist.start() }
             pairAssist = assist
             _pairQrBitmap.value = QrCodeBitmap.encode(DesktopPairingQr.encode(offer))
-            _pairMessage.value = "Scan this QR with the KeepStraight phone app."
+            _pairMessage.value = UserMessage(DesktopMessageKey.BRIDGE_SCAN_QR)
         }
     }
 
@@ -172,7 +174,7 @@ class BridgeStore(
         // "alerts off" answer before its first settings sync.
         phoneAlertsEnabled = true
         onBridgeCleared()
-        _pairMessage.value = "Phone unlinked. The desktop keeps working on its own."
+        _pairMessage.value = UserMessage(DesktopMessageKey.BRIDGE_UNLINKED)
     }
 
     fun shutdown() {
@@ -247,7 +249,7 @@ class BridgeStore(
     }
 
     private suspend fun handlePhoneHello(hello: PhoneHelloRequest): PhoneHelloResponse = pairingMutex.withLock {
-        var lastError = "Pairing failed"
+        var lastError: UserMessage = UserMessage(DesktopMessageKey.BRIDGE_PAIRING_FAILED)
         for (host in hello.phoneHosts) {
             val result = bridge.pair(host, hello.phonePort, hello.code)
             if (result.isSuccess) {
@@ -256,28 +258,33 @@ class BridgeStore(
                 session.clearIssue()
                 startSettingsSync()
                 startWorkSampleSync()
-                _pairMessage.value = "Paired with $host"
+                _pairMessage.value = UserMessage(DesktopMessageKey.BRIDGE_PAIRED_WITH, listOf(host))
                 scope.launch {
                     delay(150)
                     cancelPairQr()
                 }
                 return@withLock PhoneHelloResponse(
                     ok = true,
-                    message = "Paired",
+                    message = DesktopMessageJvm.text(DesktopMessageKey.BRIDGE_PAIRED_PROTOCOL),
                 )
             }
-            lastError = result.exceptionOrNull()?.message ?: lastError
+            lastError = bridgeFailureMessage(result.exceptionOrNull())
         }
-        session.setIssue(DesktopIssue.BridgePairFailed(lastError))
+        session.setIssue(
+            DesktopIssue.BridgePairFailed(lastError.override.orEmpty()),
+        )
         _pairMessage.value = lastError
-        return@withLock PhoneHelloResponse(ok = false, message = lastError)
+        return@withLock PhoneHelloResponse(
+            ok = false,
+            message = userMessageText(lastError),
+        )
     }
 
     private suspend fun completePairFromPhone(
         host: String,
         port: Int,
         code: String,
-        onResult: (String) -> Unit,
+        onResult: (UserMessage) -> Unit,
     ) {
         val result = bridge.pair(host, port, code)
         withContext(Dispatchers.Main) {
@@ -288,17 +295,31 @@ class BridgeStore(
                     session.clearIssue()
                     startSettingsSync()
                     startWorkSampleSync()
-                    onResult("Paired with phone. Syncing sensitivity & timers…")
+                    onResult(UserMessage(DesktopMessageKey.BRIDGE_PAIRED_SYNCING))
                 },
                 onFailure = { err ->
                     _bridgeState.value = BridgeConnectionState.FAILED
-                    val detail = err.message ?: "Pairing failed."
-                    session.setIssue(DesktopIssue.BridgePairFailed(detail))
-                    onResult(detail)
+                    val message = bridgeFailureMessage(err)
+                    session.setIssue(DesktopIssue.BridgePairFailed(message.override.orEmpty()))
+                    onResult(message)
                 },
             )
         }
     }
+
+    private fun bridgeFailureMessage(err: Throwable?): UserMessage = when (err) {
+        is BridgeClientException -> when (err.messageKey) {
+            DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED -> UserMessage(
+                err.messageKey,
+                listOf(err.message.orEmpty()),
+            )
+            else -> UserMessage(err.messageKey, override = err.message)
+        }
+        else -> BridgeErrorMapper.userMessage(err?.message)
+    }
+
+    private fun userMessageText(message: UserMessage): String =
+        message.override ?: DesktopMessageJvm.text(message.key, *message.args.toTypedArray())
 
     private fun startSettingsSync() {
         if (settingsSyncJob?.isActive == true) return
@@ -359,9 +380,9 @@ class BridgeStore(
                 slumpDurationThresholdMs = settings.slumpDurationThresholdMs,
                 repeatAlertIntervalMs = settings.repeatAlertIntervalMs,
             )
-            prefs.put("sensitivity", level.name)
-            prefs.putLong("slump_duration_ms", settings.slumpDurationThresholdMs)
-            prefs.putLong("repeat_alert_ms", settings.repeatAlertIntervalMs)
+            prefs.put(DesktopPrefsKeys.SENSITIVITY, level.name)
+            prefs.putLong(DesktopPrefsKeys.SLUMP_DURATION_MS, settings.slumpDurationThresholdMs)
+            prefs.putLong(DesktopPrefsKeys.REPEAT_ALERT_MS, settings.repeatAlertIntervalMs)
             session.currentCalibration()?.let { CalibrationStore.save(prefs, it) }
             if (_bridgeState.value == BridgeConnectionState.DEGRADED) {
                 _bridgeState.value = BridgeConnectionState.PAIRED

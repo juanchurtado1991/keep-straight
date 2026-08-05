@@ -6,6 +6,8 @@ import com.keepstraight.shared.bridge.DesktopPairOffer
 import com.keepstraight.shared.bridge.DesktopPairingQr
 import com.keepstraight.shared.bridge.PhoneHelloRequest
 import com.keepstraight.shared.bridge.PhoneHelloResponse
+import com.keepstraight.desktop.presentation.DesktopMessageKey
+import com.keepstraight.desktop.ui.i18n.DesktopMessageJvm
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.cio.CIO
@@ -60,7 +62,10 @@ class DesktopPairAssistServer(
                     if (req == null || expected == null || req.nonce != expected) {
                         call.respondText(
                             DesktopLanJson.phoneHelloResponseToJson(
-                                PhoneHelloResponse(ok = false, message = "Invalid or expired QR"),
+                                PhoneHelloResponse(
+                                    ok = false,
+                                    message = DesktopMessageJvm.text(DesktopMessageKey.PAIR_ASSIST_INVALID_QR),
+                                ),
                             ),
                             ContentType.Application.Json,
                             HttpStatusCode.Unauthorized,
@@ -70,7 +75,10 @@ class DesktopPairAssistServer(
                     if (req.protocolVersion != DesktopLanProtocol.VERSION) {
                         call.respondText(
                             DesktopLanJson.phoneHelloResponseToJson(
-                                PhoneHelloResponse(ok = false, message = "Update KeepStraight"),
+                                PhoneHelloResponse(
+                                    ok = false,
+                                    message = DesktopMessageJvm.text(DesktopMessageKey.PAIR_ASSIST_UPDATE_APP),
+                                ),
                             ),
                             ContentType.Application.Json,
                             HttpStatusCode.BadRequest,

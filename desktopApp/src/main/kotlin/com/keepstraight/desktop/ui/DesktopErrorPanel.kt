@@ -18,7 +18,7 @@ fun DesktopErrorPanel(
     title: String,
     body: String,
     detail: String? = null,
-    primaryLabel: String? = "Retry",
+    primaryLabel: String? = null,
     onPrimary: (() -> Unit)? = null,
     secondaryLabel: String? = null,
     onSecondary: (() -> Unit)? = null,

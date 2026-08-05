@@ -3,6 +3,7 @@ package com.keepstraight.desktop.presentation.camera
 import androidx.compose.ui.graphics.ImageBitmap
 import com.keepstraight.desktop.ui.FramePreview
 import com.keepstraight.shared.domain.CalibrationPhase
+import com.keepstraight.desktop.presentation.DesktopPrefsKeys
 import com.keepstraight.shared.domain.DesktopPostureSession
 import com.keepstraight.shared.domain.DesktopSessionPhase
 import com.keepstraight.shared.vision.CameraFrameSource
@@ -36,7 +37,7 @@ class CameraStore(
     val devices get() = camera?.devices
     val selectedDeviceId get() = camera?.selectedDeviceId
 
-    private val _showPreview = MutableStateFlow(prefs.getBoolean("show_preview", false))
+    private val _showPreview = MutableStateFlow(prefs.getBoolean(DesktopPrefsKeys.SHOW_PREVIEW, false))
     val showPreview: StateFlow<Boolean> = _showPreview.asStateFlow()
 
     /** Full-screen calibration UI forces live preview regardless of the home toggle. */
@@ -46,17 +47,17 @@ class CameraStore(
     private val _previewBitmap = MutableStateFlow<ImageBitmap?>(null)
     val previewBitmap: StateFlow<ImageBitmap?> = _previewBitmap.asStateFlow()
 
-    private val _lowPower = MutableStateFlow(prefs.getBoolean("low_power", false))
+    private val _lowPower = MutableStateFlow(prefs.getBoolean(DesktopPrefsKeys.LOW_POWER, false))
     val lowPower: StateFlow<Boolean> = _lowPower.asStateFlow()
 
     fun initIfConsentGranted() {
-        if (prefs.getBoolean("camera_consent_accepted", false)) {
+        if (prefs.getBoolean(DesktopPrefsKeys.CAMERA_CONSENT_ACCEPTED, false)) {
             warmUpVision()
         }
     }
 
     fun onCameraConsentGranted() {
-        prefs.putBoolean("camera_consent_accepted", true)
+        prefs.putBoolean(DesktopPrefsKeys.CAMERA_CONSENT_ACCEPTED, true)
         warmUpVision()
     }
 
@@ -86,7 +87,7 @@ class CameraStore(
     }
 
     fun setShowPreview(value: Boolean) {
-        prefs.putBoolean("show_preview", value)
+        prefs.putBoolean(DesktopPrefsKeys.SHOW_PREVIEW, value)
         _showPreview.value = value
         if (value) {
             startCameraPipeline()
@@ -97,7 +98,7 @@ class CameraStore(
     }
 
     fun setLowPower(value: Boolean) {
-        prefs.putBoolean("low_power", value)
+        prefs.putBoolean(DesktopPrefsKeys.LOW_POWER, value)
         _lowPower.value = value
         lastTargetFps = if (value) 3 else 5
         if (needsCamera()) restartCameraPipeline()
@@ -107,7 +108,7 @@ class CameraStore(
         ensureCamera()
         (camera as? JvmCameraFrameSource)?.selectDevice(deviceId, lastTargetFps)
             ?: camera?.selectDevice(deviceId)
-        prefs.put("camera_id", deviceId)
+        prefs.put(DesktopPrefsKeys.CAMERA_ID, deviceId)
     }
 
     fun refreshCameras() {
@@ -225,10 +226,10 @@ class CameraStore(
     // points share a lock to avoid creating two cameras or two ONNX sessions.
     private fun ensureCamera() {
         synchronized(visionLock) {
-            if (!prefs.getBoolean("camera_consent_accepted", false)) return
+            if (!prefs.getBoolean(DesktopPrefsKeys.CAMERA_CONSENT_ACCEPTED, false)) return
             if (camera == null) {
                 camera = VisionPlatform.createCameraFrameSource()
-                val saved = prefs.get("camera_id", null)
+                val saved = prefs.get(DesktopPrefsKeys.CAMERA_ID, null)
                 if (saved != null) {
                     (camera as? JvmCameraFrameSource)?.selectDevice(saved, lastTargetFps)
                         ?: camera?.selectDevice(saved)

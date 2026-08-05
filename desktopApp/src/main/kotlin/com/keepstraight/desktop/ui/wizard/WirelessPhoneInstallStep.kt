@@ -1,5 +1,9 @@
 package com.keepstraight.desktop.ui.wizard
 
+import com.keepstraight.desktop.presentation.DesktopMessageKey
+import com.keepstraight.desktop.presentation.UserMessage
+import com.keepstraight.desktop.ui.i18n.DesktopMessageResolver
+import com.keepstraight.desktop.ui.i18n.DesktopStrings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -50,20 +54,21 @@ fun WirelessPhoneInstallStep(
     installer: AdbInstaller = remember { AdbInstaller() },
     onInstalled: () -> Unit,
     onSkip: () -> Unit,
-    title: String = "Install on your phone",
+    title: String? = null,
 ) {
+    val screenTitle = title ?: DesktopStrings.wizardInstallPhoneTitle()
     val scope = rememberCoroutineScope()
     var offer by remember { mutableStateOf<WirelessPairOffer?>(null) }
-    var status by remember { mutableStateOf("Preparing…") }
+    var statusKey by remember { mutableStateOf(DesktopMessageKey.WIZARD_PREPARING) }
     var busy by remember { mutableStateOf(false) }
-    var errorTitle by remember { mutableStateOf<String?>(null) }
-    var errorBody by remember { mutableStateOf<String?>(null) }
+    var adbError by remember { mutableStateOf<AdbResult.Err?>(null) }
+    var unexpectedError by remember { mutableStateOf<UserMessage?>(null) }
     var errorDetail by remember { mutableStateOf<String?>(null) }
     var pairJob by remember { mutableStateOf<Job?>(null) }
 
     fun clearError() {
-        errorTitle = null
-        errorBody = null
+        adbError = null
+        unexpectedError = null
         errorDetail = null
     }
 
@@ -73,37 +78,34 @@ fun WirelessPhoneInstallStep(
         val next = WirelessAdbQr.createOffer()
         offer = next
         busy = true
-        status = "Scan this code with your phone"
+        statusKey = DesktopMessageKey.WIZARD_SCAN_QR_PHONE
         pairJob = scope.launch {
             try {
-                when (val connected = installer.pairConnectViaQr(next) { status = it }) {
+                when (val connected = installer.pairConnectViaQr(next) { statusKey = it }) {
                     is AdbResult.Ok -> {
-                        status = "Installing KeepStraight…"
+                        statusKey = DesktopMessageKey.WIZARD_INSTALLING_PHONE
                         when (val installed = installer.installPhoneApk(connected.value)) {
                             is AdbResult.Ok -> {
                                 busy = false
-                                status = "Installed — opening KeepStraight on your phone"
+                                statusKey = DesktopMessageKey.WIZARD_INSTALLED_PHONE
                                 onInstalled()
                             }
                             is AdbResult.Err -> {
                                 busy = false
-                                errorTitle = installed.title
-                                errorBody = installed.body
+                                adbError = installed
                                 errorDetail = installed.detail
                             }
                         }
                     }
                     is AdbResult.Err -> {
                         busy = false
-                        errorTitle = connected.title
-                        errorBody = connected.body
+                        adbError = connected
                         errorDetail = connected.detail
                     }
                 }
             } catch (e: Exception) {
                 busy = false
-                errorTitle = "Something went wrong"
-                errorBody = "Close Android Studio or other wireless-debug tools, then tap Show a new code."
+                unexpectedError = UserMessage(DesktopMessageKey.WIZARD_UNEXPECTED_ERROR)
                 errorDetail = e.message?.takeIf { it.isNotBlank() }
             }
         }
@@ -115,23 +117,23 @@ fun WirelessPhoneInstallStep(
     }
 
     DesktopPage {
-        Text(title, style = MaterialTheme.typography.headlineLarge)
+        Text(screenTitle, style = MaterialTheme.typography.headlineLarge)
         Text(
-            "No cables. Your phone and this computer need the same Wi‑Fi.",
+            DesktopStrings.wizardInstallPhoneBody(),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         DesktopInfoPanel(
-            title = "On your phone",
-            body = "Settings → Developer options → Wireless debugging → Pair device with QR code. Then point the phone at the code below.",
+            title = DesktopStrings.wizardInstallPhoneOnPhoneTitle(),
+            body = DesktopStrings.wizardInstallPhoneOnPhoneBody(),
         )
 
         DesktopCard {
             offer?.let { o ->
                 Image(
                     bitmap = o.qrBitmap,
-                    contentDescription = "QR code to install KeepStraight on your phone",
+                    contentDescription = DesktopStrings.wizardInstallPhoneQrCd(),
                     modifier = Modifier
                         .size(240.dp)
                         .clip(RoundedCornerShape(DesktopDimens.radiusMedium))
@@ -146,17 +148,33 @@ fun WirelessPhoneInstallStep(
                 if (busy) {
                     CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
                 }
-                Text(status, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(
+                    DesktopMessageResolver.text(statusKey),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                )
             }
 
-            errorTitle?.let { titleText ->
+            adbError?.let { err ->
                 DesktopErrorPanel(
-                    title = titleText,
-                    body = errorBody.orEmpty(),
+                    title = DesktopMessageResolver.text(err.titleKey),
+                    body = DesktopMessageResolver.text(err.bodyKey),
                     detail = errorDetail,
-                    primaryLabel = "Try again",
+                    primaryLabel = DesktopStrings.actionTryAgain(),
                     onPrimary = { startPairing() },
-                    secondaryLabel = "Skip for now",
+                    secondaryLabel = DesktopStrings.actionSkipForNow(),
+                    onSecondary = onSkip,
+                )
+            }
+
+            unexpectedError?.let {
+                DesktopErrorPanel(
+                    title = DesktopMessageResolver.text(it.key),
+                    body = DesktopMessageResolver.text(DesktopMessageKey.WIZARD_UNEXPECTED_ERROR_BODY_PHONE),
+                    detail = errorDetail,
+                    primaryLabel = DesktopStrings.actionTryAgain(),
+                    onPrimary = { startPairing() },
+                    secondaryLabel = DesktopStrings.actionSkipForNow(),
                     onSecondary = onSkip,
                 )
             }
@@ -168,22 +186,22 @@ fun WirelessPhoneInstallStep(
                         onClick = {
                             pairJob?.cancel()
                             busy = false
-                            status = "Stopped. Show a new code when you’re ready."
+                            statusKey = DesktopMessageKey.WIZARD_STOPPED_NEW_CODE
                         },
                         colors = desktopSecondaryButtonColors(),
                         shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                    ) { Text("Stop waiting") }
+                    ) { Text(DesktopStrings.actionStopWaiting()) }
                 } else {
                     Button(
                         onClick = { startPairing() },
                         colors = desktopPrimaryButtonColors(),
                         shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                    ) { Text("Show a new code") }
+                    ) { Text(DesktopStrings.actionShowNewCode()) }
                 }
-                TextButton(onClick = onSkip) { Text("Skip — already installed, or later") }
+                TextButton(onClick = onSkip) { Text(DesktopStrings.wizardInstallPhoneSkip()) }
             }
             Text(
-                "You can install the phone app anytime from Settings.",
+                DesktopStrings.wizardInstallPhoneSettingsHint(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

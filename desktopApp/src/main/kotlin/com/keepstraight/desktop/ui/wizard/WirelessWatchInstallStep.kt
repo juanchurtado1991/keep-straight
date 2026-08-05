@@ -1,5 +1,9 @@
 package com.keepstraight.desktop.ui.wizard
 
+import com.keepstraight.desktop.presentation.DesktopMessageKey
+import com.keepstraight.desktop.presentation.UserMessage
+import com.keepstraight.desktop.ui.i18n.DesktopMessageResolver
+import com.keepstraight.desktop.ui.i18n.DesktopStrings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,10 +43,6 @@ import com.keepstraight.desktop.ui.desktopSecondaryButtonColors
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-/**
- * Watch install only. Independent from phone install and from KeepStraight phone↔desktop linking.
- * Prefers an already-connected watch (no typing); otherwise the user enters what the watch shows.
- */
 @Composable
 fun WirelessWatchInstallStep(
     installer: AdbInstaller = remember { AdbInstaller() },
@@ -53,30 +53,28 @@ fun WirelessWatchInstallStep(
     var readyWatches by remember { mutableStateOf<List<AdbDevice>>(emptyList()) }
     var address by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
-    var status by remember { mutableStateOf("Looking for a watch…") }
+    var statusKey by remember { mutableStateOf(DesktopMessageKey.WIZARD_WATCH_LOOKUP) }
     var busy by remember { mutableStateOf(false) }
     var scanning by remember { mutableStateOf(true) }
     var showManual by remember { mutableStateOf(false) }
-    var errorTitle by remember { mutableStateOf<String?>(null) }
-    var errorBody by remember { mutableStateOf<String?>(null) }
+    var adbError by remember { mutableStateOf<AdbResult.Err?>(null) }
+    var userError by remember { mutableStateOf<UserMessage?>(null) }
     var errorDetail by remember { mutableStateOf<String?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
 
     fun clearError() {
-        errorTitle = null
-        errorBody = null
+        adbError = null
+        userError = null
         errorDetail = null
     }
 
     fun showError(err: AdbResult.Err) {
-        errorTitle = err.title
-        errorBody = err.body
+        adbError = err
         errorDetail = err.detail
     }
 
     fun showUnexpected(e: Throwable) {
-        errorTitle = "Something went wrong"
-        errorBody = "Close Android Studio or other wireless-debug tools, then try Connect & install again."
+        userError = UserMessage(DesktopMessageKey.WIZARD_UNEXPECTED_ERROR)
         errorDetail = e.message?.takeIf { it.isNotBlank() }
     }
 
@@ -84,7 +82,7 @@ fun WirelessWatchInstallStep(
         job?.cancel()
         clearError()
         scanning = true
-        status = "Looking for a watch already on Wi‑Fi…"
+        statusKey = DesktopMessageKey.WIZARD_WATCH_SCANNING
         job = scope.launch {
             try {
                 when (val r = installer.listReadyWatches()) {
@@ -93,17 +91,17 @@ fun WirelessWatchInstallStep(
                         scanning = false
                         if (r.value.isNotEmpty()) {
                             showManual = false
-                            status = "Watch ready — tap Install."
+                            statusKey = DesktopMessageKey.WIZARD_WATCH_READY
                         } else {
                             showManual = true
-                            status = "No watch connected yet. Turn on Wireless debugging on the watch, then Search again — or type the address below."
+                            statusKey = DesktopMessageKey.WIZARD_WATCH_NOT_CONNECTED
                         }
                     }
                     is AdbResult.Err -> {
                         readyWatches = emptyList()
                         scanning = false
                         showManual = true
-                        status = "Couldn’t scan devices — type what the watch shows."
+                        statusKey = DesktopMessageKey.WIZARD_WATCH_SCAN_FAILED
                         showError(r)
                     }
                 }
@@ -111,7 +109,7 @@ fun WirelessWatchInstallStep(
                 readyWatches = emptyList()
                 scanning = false
                 showManual = true
-                status = "Couldn’t scan devices — type what the watch shows."
+                statusKey = DesktopMessageKey.WIZARD_WATCH_SCAN_FAILED
                 showUnexpected(e)
             }
         }
@@ -121,24 +119,24 @@ fun WirelessWatchInstallStep(
         job?.cancel()
         clearError()
         busy = true
-        status = "Installing KeepStraight on the watch…"
+        statusKey = DesktopMessageKey.WIZARD_INSTALLING_WATCH
         job = scope.launch {
             try {
                 when (val installed = installer.installWearApk(serial)) {
                     is AdbResult.Ok -> {
                         busy = false
-                        status = "Installed — opening KeepStraight on the watch"
+                        statusKey = DesktopMessageKey.WIZARD_INSTALLED_WATCH
                         onInstalled()
                     }
                     is AdbResult.Err -> {
                         busy = false
-                        status = "Stopped."
+                        statusKey = DesktopMessageKey.WIZARD_STOPPED
                         showError(installed)
                     }
                 }
             } catch (e: Exception) {
                 busy = false
-                status = "Stopped."
+                statusKey = DesktopMessageKey.WIZARD_STOPPED
                 showUnexpected(e)
             }
         }
@@ -149,8 +147,7 @@ fun WirelessWatchInstallStep(
         val host = raw.substringBeforeLast(':', "").ifEmpty { raw }
         val port = raw.substringAfterLast(':', "").toIntOrNull()
         if (host.isEmpty() || port == null) {
-            errorTitle = "That address doesn’t look right"
-            errorBody = "Copy it exactly as the watch shows it, including the port — for example 192.168.1.42:37031."
+            userError = UserMessage(DesktopMessageKey.WIZARD_ADDRESS_INVALID)
             errorDetail = null
             return
         }
@@ -163,24 +160,24 @@ fun WirelessWatchInstallStep(
                     host = host,
                     port = port,
                     pairingCode = code.trim().takeIf { it.isNotEmpty() },
-                ) { status = it }
+                ) { statusKey = it }
                 when (connected) {
                     is AdbResult.Err -> {
                         busy = false
-                        status = "Stopped."
+                        statusKey = DesktopMessageKey.WIZARD_STOPPED
                         showError(connected)
                     }
                     is AdbResult.Ok -> {
-                        status = "Installing KeepStraight on the watch…"
+                        statusKey = DesktopMessageKey.WIZARD_INSTALLING_WATCH
                         when (val installed = installer.installWearApk(connected.value)) {
                             is AdbResult.Ok -> {
                                 busy = false
-                                status = "Installed — opening KeepStraight on the watch"
+                                statusKey = DesktopMessageKey.WIZARD_INSTALLED_WATCH
                                 onInstalled()
                             }
                             is AdbResult.Err -> {
                                 busy = false
-                                status = "Stopped."
+                                statusKey = DesktopMessageKey.WIZARD_STOPPED
                                 showError(installed)
                             }
                         }
@@ -188,7 +185,7 @@ fun WirelessWatchInstallStep(
                 }
             } catch (e: Exception) {
                 busy = false
-                status = "Stopped."
+                statusKey = DesktopMessageKey.WIZARD_STOPPED
                 showUnexpected(e)
             }
         }
@@ -200,17 +197,16 @@ fun WirelessWatchInstallStep(
     }
 
     DesktopPage {
-        Text("Install on your watch", style = MaterialTheme.typography.headlineLarge)
+        Text(DesktopStrings.wizardInstallWatchTitle(), style = MaterialTheme.typography.headlineLarge)
         Text(
-            "This only installs the watch app. It does not link your phone, and your phone doesn’t need to be involved.",
+            DesktopStrings.wizardInstallWatchBody(),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         DesktopInfoPanel(
-            title = "On the watch",
-            body = "Settings → Developer options → Wireless debugging on, same Wi‑Fi as this computer. " +
-                "If the watch is already connected here, just tap Install. Otherwise open Pair new device and enter the address/code below.",
+            title = DesktopStrings.wizardInstallWatchOnWatchTitle(),
+            body = DesktopStrings.wizardInstallWatchOnWatchBody(),
         )
 
         DesktopCard {
@@ -221,7 +217,11 @@ fun WirelessWatchInstallStep(
                 if (busy || scanning) {
                     CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
                 }
-                Text(status, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(
+                    DesktopMessageResolver.text(statusKey),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                )
             }
 
             if (readyWatches.isNotEmpty() && !busy) {
@@ -232,7 +232,11 @@ fun WirelessWatchInstallStep(
                         colors = desktopPrimaryButtonColors(),
                         shape = RoundedCornerShape(DesktopDimens.radiusSmall),
                     ) {
-                        Text("Install on ${watch.serial.substringBefore('.').take(24)}")
+                        Text(
+                            DesktopStrings.wizardInstallOnDevice(
+                                watch.serial.substringBefore('.').take(24),
+                            ),
+                        )
                     }
                 }
             }
@@ -241,8 +245,8 @@ fun WirelessWatchInstallStep(
                 OutlinedTextField(
                     value = address,
                     onValueChange = { address = it },
-                    label = { Text("Watch address (IP:port)") },
-                    placeholder = { Text("192.168.1.42:37031") },
+                    label = { Text(DesktopStrings.wizardInstallWatchAddressLabel()) },
+                    placeholder = { Text(DesktopStrings.wizardInstallWatchAddressPlaceholder()) },
                     singleLine = true,
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
@@ -251,26 +255,26 @@ fun WirelessWatchInstallStep(
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it.filter { ch -> ch.isDigit() }.take(6) },
-                    label = { Text("Pairing code (leave empty if none)") },
-                    placeholder = { Text("123456") },
+                    label = { Text(DesktopStrings.wizardInstallWatchCodeLabel()) },
+                    placeholder = { Text(DesktopStrings.wizardInstallWatchCodePlaceholder()) },
                     singleLine = true,
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(DesktopDimens.radiusSmall),
                 )
                 Text(
-                    "This is Wireless debugging pairing for the watch — not the KeepStraight phone QR.",
+                    DesktopStrings.wizardInstallWatchPairingNote(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
-            errorTitle?.let { titleText ->
+            adbError?.let { err ->
                 DesktopErrorPanel(
-                    title = titleText,
-                    body = errorBody.orEmpty(),
+                    title = DesktopMessageResolver.text(err.titleKey),
+                    body = DesktopMessageResolver.text(err.bodyKey),
                     detail = errorDetail,
-                    primaryLabel = "Try again",
+                    primaryLabel = DesktopStrings.actionTryAgain(),
                     onPrimary = {
                         if (readyWatches.isNotEmpty()) {
                             installOnSerial(readyWatches.first().serial)
@@ -280,7 +284,33 @@ fun WirelessWatchInstallStep(
                             refreshWatches()
                         }
                     },
-                    secondaryLabel = "Back",
+                    secondaryLabel = DesktopStrings.actionBack(),
+                    onSecondary = onSkip,
+                )
+            }
+
+            userError?.let { err ->
+                val bodyKey = when (err.key) {
+                    DesktopMessageKey.WIZARD_ADDRESS_INVALID -> DesktopMessageKey.WIZARD_ADDRESS_INVALID_BODY
+                    else -> DesktopMessageKey.WIZARD_UNEXPECTED_ERROR_BODY_WATCH
+                }
+                DesktopErrorPanel(
+                    title = DesktopMessageResolver.text(err.key),
+                    body = DesktopMessageResolver.text(bodyKey),
+                    detail = errorDetail,
+                    primaryLabel = DesktopStrings.actionTryAgain(),
+                    onPrimary = {
+                        if (err.key == DesktopMessageKey.WIZARD_ADDRESS_INVALID) {
+                            clearError()
+                        } else if (readyWatches.isNotEmpty()) {
+                            installOnSerial(readyWatches.first().serial)
+                        } else if (address.isNotBlank()) {
+                            installManual()
+                        } else {
+                            refreshWatches()
+                        }
+                    },
+                    secondaryLabel = DesktopStrings.actionBack(),
                     onSecondary = onSkip,
                 )
             }
@@ -292,11 +322,11 @@ fun WirelessWatchInstallStep(
                         onClick = {
                             job?.cancel()
                             busy = false
-                            status = "Stopped."
+                            statusKey = DesktopMessageKey.WIZARD_STOPPED
                         },
                         colors = desktopSecondaryButtonColors(),
                         shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                    ) { Text("Stop") }
+                    ) { Text(DesktopStrings.actionStop()) }
                 } else {
                     if (showManual) {
                         Button(
@@ -304,19 +334,21 @@ fun WirelessWatchInstallStep(
                             enabled = address.isNotBlank(),
                             colors = desktopPrimaryButtonColors(),
                             shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                        ) { Text("Connect & install") }
+                        ) { Text(DesktopStrings.actionConnectInstall()) }
                     }
                     OutlinedButton(
                         onClick = { refreshWatches() },
                         enabled = !scanning,
                         colors = desktopSecondaryButtonColors(),
                         shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                    ) { Text("Search again") }
+                    ) { Text(DesktopStrings.actionSearchAgain()) }
                     if (!showManual) {
-                        TextButton(onClick = { showManual = true }) { Text("Enter address manually") }
+                        TextButton(onClick = { showManual = true }) {
+                            Text(DesktopStrings.actionEnterAddressManually())
+                        }
                     }
                 }
-                TextButton(onClick = onSkip) { Text("Back") }
+                TextButton(onClick = onSkip) { Text(DesktopStrings.actionBack()) }
             }
         }
     }

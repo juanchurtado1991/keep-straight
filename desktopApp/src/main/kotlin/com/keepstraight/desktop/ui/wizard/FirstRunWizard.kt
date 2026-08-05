@@ -1,5 +1,6 @@
 package com.keepstraight.desktop.ui.wizard
 
+import com.keepstraight.desktop.ui.i18n.DesktopStrings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,14 +41,14 @@ fun FirstRunWizard(
 
     when (phase) {
         WizardPhase.Welcome -> DesktopPage {
-            Text("Welcome to KeepStraight", style = MaterialTheme.typography.headlineLarge)
+            Text(DesktopStrings.wizardWelcomeTitle(), style = MaterialTheme.typography.headlineLarge)
             DesktopCard {
                 Text(
-                    "This computer watches your posture with the webcam. Everything runs offline here.",
+                    DesktopStrings.wizardWelcomeBody(),
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
-                    "Phone and watch are optional add-ons for alerts on your wrist and history on your phone.",
+                    DesktopStrings.wizardWelcomeCompanion(),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -59,7 +60,7 @@ fun FirstRunWizard(
                         },
                         colors = desktopPrimaryButtonColors(),
                         shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                    ) { Text("Continue") }
+                    ) { Text(DesktopStrings.actionContinue()) }
                     OutlinedButton(
                         onClick = {
                             skipCompanion = true
@@ -71,7 +72,7 @@ fun FirstRunWizard(
                         },
                         colors = desktopSecondaryButtonColors(),
                         shape = RoundedCornerShape(DesktopDimens.radiusSmall),
-                    ) { Text("Skip phone & watch") }
+                    ) { Text(DesktopStrings.actionSkipPhoneWatch()) }
                 }
             }
         }
