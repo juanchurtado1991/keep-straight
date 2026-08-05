@@ -101,6 +101,7 @@ class MainActivity : ComponentActivity() {
                             onOpenWearCompanion = SystemIntentsHelper.wearCompanion(this@MainActivity)?.let { intent ->
                                 { startActivity(intent) }
                             },
+                            onOpenCalibrate = { navController.navigate(AppRoutes.CALIBRATE) },
                             onComplete = {
                                 navController.navigate(AppRoutes.DASHBOARD) {
                                     popUpTo(AppRoutes.ONBOARDING) { inclusive = true }
@@ -124,6 +125,7 @@ class MainActivity : ComponentActivity() {
                             onOpenWearCompanion = SystemIntentsHelper.wearCompanion(this@MainActivity)?.let { intent ->
                                 { startActivity(intent) }
                             },
+                            onOpenCalibrate = { navController.navigate(AppRoutes.CALIBRATE) },
                             onComplete = { navController.popBackStack() },
                             initialStep = OnboardingStep.PAIR,
                             pairOnly = true,
@@ -215,6 +217,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onScanDesktopQr = { navController.navigate(AppRoutes.DESKTOP_QR) },
                             onOpenConnection = { openConnection(autoStart = false) },
+                            onRecalibrate = { navController.navigate(AppRoutes.CALIBRATE) },
                             onBack = { navController.popBackStack() },
                         )
                     }

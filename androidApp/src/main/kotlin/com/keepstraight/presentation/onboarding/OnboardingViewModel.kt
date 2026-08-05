@@ -10,6 +10,7 @@ import com.keepstraight.shared.platform.BatteryOptimizationProbe
 import com.keepstraight.shared.repository.PreferencesRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -22,6 +23,10 @@ class OnboardingViewModel(
 
     val sensitivity: StateFlow<SensitivityLevel> = userPreferencesRepository.sensitivity
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), SensitivityLevel.NORMAL)
+
+    val isCalibrated: StateFlow<Boolean> = userPreferencesRepository.calibrationPitch
+        .map { it != null }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PhonePresentationConfig.STATE_SUBSCRIPTION_MS), false)
 
     fun setSensitivity(level: SensitivityLevel) {
         viewModelScope.launch { settingsUseCase.setSensitivity(level) }

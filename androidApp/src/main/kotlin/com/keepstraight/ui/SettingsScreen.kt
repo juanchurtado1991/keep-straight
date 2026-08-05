@@ -39,6 +39,7 @@ fun SettingsScreen(
     onChangePairedWatch: () -> Unit,
     onScanDesktopQr: () -> Unit,
     onOpenConnection: () -> Unit,
+    onRecalibrate: () -> Unit,
     onBack: () -> Unit,
 ) {
     val pairedWatchId by viewModel.pairedWatchId.collectAsState()
@@ -165,6 +166,7 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                SettingsLink(stringResource(R.string.onboarding_calibrate_again), onRecalibrate)
                 SettingsLink(stringResource(R.string.settings_change_watch), onChangePairedWatch)
             }
 

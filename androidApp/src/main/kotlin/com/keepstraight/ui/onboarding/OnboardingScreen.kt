@@ -59,6 +59,7 @@ fun OnboardingScreen(
     onOpenBatteryFallback: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
     onOpenWearCompanion: (() -> Unit)?,
+    onOpenCalibrate: () -> Unit,
     onComplete: () -> Unit,
     initialStep: OnboardingStep = OnboardingStep.WELCOME,
     pairOnly: Boolean = false,
@@ -69,6 +70,7 @@ fun OnboardingScreen(
     val availableNodes = (discoverState as? DiscoverUiState.Ready)?.nodes.orEmpty()
     val pairedWatchId by pairingViewModel.pairedWatchId.collectAsState()
     val sensitivity by onboardingViewModel.sensitivity.collectAsState()
+    val isCalibrated by onboardingViewModel.isCalibrated.collectAsState()
     val context = LocalContext.current
     val wearCompanionAvailable = remember {
         SystemIntentsHelper.isWearCompanionInstalled(context)
@@ -278,6 +280,13 @@ fun OnboardingScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        Button(
+                            onClick = onOpenCalibrate,
+                            shape = phoneButtonShape(),
+                            colors = phonePrimaryButtonColors(),
+                        ) {
+                            Text(stringResource(R.string.onboarding_calibrate_again))
+                        }
                     }
 
                     OnboardingStep.SENSITIVITY -> {
@@ -326,6 +335,7 @@ fun OnboardingScreen(
                 val canProceed = when (step) {
                     OnboardingStep.PAIR -> pairedWatchId != null
                     OnboardingStep.BATTERY -> batteryAcknowledged || !onboardingViewModel.isBatteryOptimizationEnabled()
+                    OnboardingStep.CALIBRATE -> isCalibrated
                     else -> true
                 }
                 if (step == OnboardingStep.PAIR && !pairOnly && pairedWatchId == null) {
