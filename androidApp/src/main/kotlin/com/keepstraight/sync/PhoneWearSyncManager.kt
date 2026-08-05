@@ -23,6 +23,8 @@ import com.keepstraight.shared.model.WatchControlMessage
 import com.keepstraight.shared.sync.CalibrationResultCodec
 import com.keepstraight.shared.sync.SyncCapabilities
 import com.keepstraight.shared.sync.SyncPaths
+import com.keepstraight.shared.repository.DeviceSyncException
+import com.keepstraight.shared.repository.DeviceSyncFailureReason
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -214,7 +216,7 @@ class PhoneWearSyncManager(
             }
             if (targets.isEmpty()) {
                 Log.w(TAG, "TRIGGER_ALERT: no wear targets")
-                return@withContext Result.failure(IllegalStateException(ERROR_UNREACHABLE))
+                return@withContext Result.failure(DeviceSyncException(DeviceSyncFailureReason.WATCH_UNREACHABLE))
             }
             var anyOk = false
             for (nodeId in targets) {
@@ -226,7 +228,7 @@ class PhoneWearSyncManager(
                 anyOk = anyOk || ok
             }
             if (anyOk) Result.success(Unit)
-            else Result.failure(IllegalStateException(ERROR_UNREACHABLE))
+            else Result.failure(DeviceSyncException(DeviceSyncFailureReason.WATCH_UNREACHABLE))
         }
 
     override suspend fun sendPreferences(
@@ -312,7 +314,7 @@ class PhoneWearSyncManager(
             addAll(nodes.map { it.id })
         }
         if (targets.isEmpty()) {
-            return@withContext Result.failure(IllegalStateException(ERROR_UNREACHABLE))
+            return@withContext Result.failure(DeviceSyncException(DeviceSyncFailureReason.WATCH_UNREACHABLE))
         }
 
         var anyOk = false
@@ -325,7 +327,7 @@ class PhoneWearSyncManager(
             anyOk = anyOk || ok
         }
         if (anyOk) Result.success(Unit)
-        else Result.failure(IllegalStateException(ERROR_UNREACHABLE))
+        else Result.failure(DeviceSyncException(DeviceSyncFailureReason.WATCH_UNREACHABLE))
     }
 
     private suspend fun publishCalibrateRequest(): Result<Unit> = withContext(Dispatchers.IO) {
@@ -345,7 +347,7 @@ class PhoneWearSyncManager(
 
     override suspend fun reconnect(): Result<Unit> {
         val watchId = userPreferencesRepository.pairedWatchId.first()
-            ?: return Result.failure(IllegalStateException(ERROR_NO_PAIRED))
+            ?: return Result.failure(DeviceSyncException(DeviceSyncFailureReason.NO_PAIRED_WATCH))
 
         val nodesResult = awaitWear { nodeClient.connectedNodes.await() }
         val nodes = nodesResult.getOrElse {
@@ -353,7 +355,7 @@ class PhoneWearSyncManager(
         }
         if (nodes.none { it.id == watchId }) {
             _isConnected.value = false
-            return Result.failure(IllegalStateException(ERROR_UNREACHABLE))
+            return Result.failure(DeviceSyncException(DeviceSyncFailureReason.WATCH_UNREACHABLE))
         }
         _isConnected.value = true
 
@@ -406,7 +408,7 @@ class PhoneWearSyncManager(
     private suspend fun sendToPairedWatch(path: String, payload: ByteArray): Result<Unit> =
         withContext(Dispatchers.IO) {
             val watchId = userPreferencesRepository.pairedWatchId.first()
-                ?: return@withContext Result.failure(IllegalStateException(ERROR_NO_PAIRED))
+                ?: return@withContext Result.failure(DeviceSyncException(DeviceSyncFailureReason.NO_PAIRED_WATCH))
             awaitWear {
                 messageClient.sendMessage(watchId, path, payload).await()
                 Unit
@@ -437,7 +439,5 @@ class PhoneWearSyncManager(
         private const val CONNECTION_POLL_MS = 5_000L
         private const val WEAR_TIMEOUT_MS = 8_000L
         private const val CAPABILITY_DUPLICATE = 4006
-        const val ERROR_NO_PAIRED = "NO_PAIRED_WATCH"
-        const val ERROR_UNREACHABLE = "WATCH_UNREACHABLE"
     }
 }

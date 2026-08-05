@@ -183,28 +183,8 @@ class JvmCameraFrameSource : CameraFrameSource {
         else -> CameraError.NOT_FOUND
     }
 
-    private fun classifyAccessError(message: String?): CameraError? {
-        val detail = message.orEmpty().lowercase()
-        if (detail.isBlank()) return null
-        return when {
-            detail.contains("permission") ||
-                detail.contains("not authorized") ||
-                detail.contains("access is denied") ||
-                detail.contains("access denied") ||
-                detail.contains("eacces") ||
-                detail.contains("privacy") ->
-                CameraError.PERMISSION_DENIED
-            detail.contains("busy") ||
-                detail.contains("in use") ||
-                detail.contains("locked") ->
-                CameraError.IN_USE
-            detail.contains("no such file") ||
-                detail.contains("no device") ||
-                detail.contains("not found") ->
-                CameraError.NOT_FOUND
-            else -> null
-        }
-    }
+    private fun classifyAccessError(message: String?): CameraError? =
+        JvmCameraAccessErrorSignals.classify(message)
 
     private fun pickViewSize(cam: Webcam): Dimension {
         val preferred = Dimension(640, 480)
