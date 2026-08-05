@@ -148,11 +148,20 @@ object DesktopLanJson {
     }
 
     fun parsePairResponse(json: String): DesktopPairResponse? {
-        val ok = DesktopLanJsonWire.isOkTrue(json)
+        val trimmed = json.trim()
+        if (!trimmed.startsWith("{")) return null
+        if (DesktopLanJsonWire.isOkFalse(trimmed) && !DesktopLanJsonWire.isOkTrue(trimmed)) {
+            return DesktopPairResponse(
+                ok = false,
+                token = stringField(trimmed, "token").orEmpty(),
+                errorCode = parseErrorCode(trimmed),
+            )
+        }
+        if (!DesktopLanJsonWire.isOkTrue(trimmed)) return null
         return DesktopPairResponse(
-            ok = ok,
-            token = stringField(json, "token").orEmpty(),
-            errorCode = parseErrorCode(json),
+            ok = true,
+            token = stringField(trimmed, "token").orEmpty(),
+            errorCode = parseErrorCode(trimmed),
         )
     }
 
