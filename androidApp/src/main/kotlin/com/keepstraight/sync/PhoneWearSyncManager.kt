@@ -26,6 +26,7 @@ import com.keepstraight.shared.sync.SyncPaths
 import com.keepstraight.shared.repository.DeviceSyncException
 import com.keepstraight.shared.repository.DeviceSyncFailureReason
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -360,9 +361,8 @@ class PhoneWearSyncManager(
     }
 
     override suspend fun awaitCalibrationResult(timeoutMs: Long): CalibrationCaptureResult? {
-        val (deferred, sessionId) = calibrationMutex.withLock {
-            calibrationDeferred to calibrationSessionId
-        } ?: return null
+        val deferred = calibrationMutex.withLock { calibrationDeferred } ?: return null
+        val sessionId = calibrationMutex.withLock { calibrationSessionId }
         return try {
             withTimeoutOrNull(timeoutMs) { deferred.await() }
         } catch (_: CancellationException) {
