@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 
 class CalibrationController(
     private val preferencesRepository: PreferencesRepository,
@@ -54,12 +55,12 @@ class CalibrationController(
     private suspend fun runCapturePhase(phase: CalibrationPhase) {
         for (seconds in CalibrationReducer.COUNTDOWN_SECONDS downTo 1) {
             apply(CalibrationReduceAction.TickCountdown(seconds, phase))
-            delay(COUNTDOWN_STEP_MS)
+            delay(COUNTDOWN_STEP_MS.milliseconds)
         }
 
         apply(CalibrationReduceAction.BeginCapture(phase))
 
-        val sendResult = withTimeoutOrNull(SEND_TIMEOUT_MS) {
+        val sendResult = withTimeoutOrNull(SEND_TIMEOUT_MS.milliseconds) {
             deviceSyncGateway.requestCalibrationCapture()
         }
         when {
