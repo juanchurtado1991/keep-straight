@@ -3,6 +3,7 @@ package com.keepstraight.shared.domain
 import com.keepstraight.shared.model.SensitivityLevel
 import com.keepstraight.shared.platform.currentTimeMillis
 import com.keepstraight.shared.presentation.DesktopIssue
+import com.keepstraight.shared.presentation.StatusCopyKey
 import com.keepstraight.shared.vision.BodyPose
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +32,8 @@ data class DesktopSessionUiState(
     val hasCalibration: Boolean = false,
     val hasErectCapture: Boolean = false,
     val lastAlertAtMs: Long = 0L,
-    val statusMessage: String = "Start a session to monitor posture.",
+    val statusKey: StatusCopyKey = StatusCopyKey.BODY_START_SESSION,
+    val statusArgs: List<Any> = emptyList(),
     val sensitivity: SensitivityLevel = SensitivityLevel.NORMAL,
     val slumpDurationThresholdMs: Long = 30_000L,
     val repeatAlertIntervalMs: Long = 5_000L,
@@ -138,7 +140,7 @@ class DesktopPostureSession {
             slumpDurationThresholdMs = pendingSlumpDurationMs,
             repeatAlertIntervalMs = pendingRepeatAlertMs,
             issue = null,
-            statusMessage = "Calibration loaded.",
+            statusKey = StatusCopyKey.SESSION_CALIBRATION_LOADED,
         )
     }
 
@@ -157,7 +159,7 @@ class DesktopPostureSession {
         _ui.value = _ui.value.copy(
             phase = DesktopSessionPhase.RUNNING,
             issue = null,
-            statusMessage = "Monitoring posture.",
+            statusKey = StatusCopyKey.SESSION_MONITORING_POSTURE,
         )
         return true
     }
@@ -170,7 +172,7 @@ class DesktopPostureSession {
             isSlumped = false,
             slumpElapsedMs = 0L,
             presence = PresenceState.AWAY,
-            statusMessage = "Session stopped.",
+            statusKey = StatusCopyKey.SESSION_STOPPED,
             issue = null,
         )
     }
@@ -189,7 +191,7 @@ class DesktopPostureSession {
         _ui.value = _ui.value.copy(
             calibrationPhase = CalibrationPhase.CAPTURE_ERECT,
             hasErectCapture = false,
-            statusMessage = "Hold good posture…",
+            statusKey = StatusCopyKey.SESSION_HOLD_GOOD_POSTURE,
             issue = null,
         )
         return true
@@ -216,7 +218,7 @@ class DesktopPostureSession {
         calibrationStartedAt = -1L
         _ui.value = _ui.value.copy(
             calibrationPhase = CalibrationPhase.CAPTURE_SLUMP,
-            statusMessage = "Hold your slumped posture…",
+            statusKey = StatusCopyKey.SESSION_HOLD_SLUMPED_POSTURE,
             issue = null,
         )
         return true
@@ -231,10 +233,10 @@ class DesktopPostureSession {
             } else {
                 CalibrationPhase.NONE
             },
-            statusMessage = when {
-                !wasCapturing -> _ui.value.statusMessage
-                _ui.value.hasCalibration -> "Monitoring ready."
-                else -> "Calibration cancelled."
+            statusKey = when {
+                !wasCapturing -> _ui.value.statusKey
+                _ui.value.hasCalibration -> StatusCopyKey.SESSION_MONITORING_READY
+                else -> StatusCopyKey.SESSION_CALIBRATION_CANCELLED
             },
             issue = null,
         )
@@ -261,7 +263,7 @@ class DesktopPostureSession {
                 _ui.value = _ui.value.copy(
                     calibrationPhase = CalibrationPhase.NONE,
                     issue = DesktopIssue.CalibrationNoPose,
-                    statusMessage = "No pose detected. Face the camera with good light.",
+                    statusKey = StatusCopyKey.SESSION_NO_POSE_DETECTED,
                 )
             }
         }
@@ -305,10 +307,10 @@ class DesktopPostureSession {
                 wasSlumped = false
             }
             val pauseMsg = when (presence) {
-                PresenceState.STANDING -> "Paused — Standing"
-                PresenceState.AWAY -> "Paused — Away"
-                PresenceState.LOW_CONFIDENCE -> "Paused — Face the camera"
-                PresenceState.SITTING -> "Calibrate erect and slumped poses first."
+                PresenceState.STANDING -> StatusCopyKey.STATUS_PAUSED_STANDING
+                PresenceState.AWAY -> StatusCopyKey.STATUS_PAUSED_AWAY
+                PresenceState.LOW_CONFIDENCE -> StatusCopyKey.STATUS_PAUSED_FACE_CAMERA
+                PresenceState.SITTING -> StatusCopyKey.SESSION_CALIBRATE_ERECT_FIRST
             }
             val presenceIssue = when (presence) {
                 PresenceState.LOW_CONFIDENCE -> DesktopIssue.TooDarkOrLowConfidence
@@ -325,7 +327,7 @@ class DesktopPostureSession {
                 slumpScore = score,
                 isSlumped = presence == PresenceState.LOW_CONFIDENCE && wasSlumped,
                 slumpElapsedMs = elapsed,
-                statusMessage = pauseMsg,
+                statusKey = pauseMsg,
                 issue = presenceIssue,
             )
             return null
@@ -357,7 +359,7 @@ class DesktopPostureSession {
                 isSlumped = true,
                 slumpElapsedMs = elapsed,
                 lastAlertAtMs = lastAlertAt,
-                statusMessage = if (elapsed >= threshold) "Slouching — sit up" else "Monitoring posture.",
+                statusKey = if (elapsed >= threshold) StatusCopyKey.SESSION_SLOUCHING_SIT_UP else StatusCopyKey.SESSION_MONITORING_POSTURE,
                 hasCalibration = true,
                 issue = null,
             )
@@ -371,7 +373,7 @@ class DesktopPostureSession {
                 slumpScore = score,
                 isSlumped = false,
                 slumpElapsedMs = 0L,
-                statusMessage = "Looking good.",
+                statusKey = StatusCopyKey.SESSION_LOOKING_GOOD,
                 hasCalibration = true,
                 issue = null,
             )
@@ -432,7 +434,7 @@ class DesktopPostureSession {
                 _ui.value.calibrationPhase
             },
             issue = DesktopIssue.Camera(error),
-            statusMessage = "Camera error",
+            statusKey = StatusCopyKey.SESSION_CAMERA_ERROR,
             isSlumped = false,
             slumpElapsedMs = 0L,
         )
@@ -442,10 +444,10 @@ class DesktopPostureSession {
         if (_ui.value.issue is DesktopIssue.Camera) {
             _ui.value = _ui.value.copy(
                 issue = null,
-                statusMessage = when (_ui.value.phase) {
-                    DesktopSessionPhase.RUNNING -> "Monitoring posture."
-                    DesktopSessionPhase.PAUSED -> "Camera ready."
-                    DesktopSessionPhase.IDLE -> "Camera ready."
+                statusKey = when (_ui.value.phase) {
+                    DesktopSessionPhase.RUNNING -> StatusCopyKey.SESSION_MONITORING_POSTURE
+                    DesktopSessionPhase.PAUSED -> StatusCopyKey.SESSION_CAMERA_READY
+                    DesktopSessionPhase.IDLE -> StatusCopyKey.SESSION_CAMERA_READY
                 },
             )
         }
@@ -464,13 +466,14 @@ class DesktopPostureSession {
                 erectSamples += features
                 val elapsed = nowMs - calibrationStartedAt
                 _ui.value = _ui.value.copy(
-                    statusMessage = "Hold still… ${erectSamples.size.coerceAtMost(minSamples)}/$minSamples",
+                    statusKey = StatusCopyKey.SESSION_HOLD_STILL_PROGRESS,
+                    statusArgs = listOf(erectSamples.size.coerceAtMost(minSamples), minSamples),
                 )
                 if (elapsed >= captureMs && erectSamples.size >= minSamples) {
                     _ui.value = _ui.value.copy(
                         calibrationPhase = CalibrationPhase.NONE,
                         hasErectCapture = true,
-                        statusMessage = "Erect pose captured. Next: calibrate slumped.",
+                        statusKey = StatusCopyKey.SESSION_ERECT_CAPTURED,
                         issue = null,
                     )
                 }
@@ -483,7 +486,8 @@ class DesktopPostureSession {
                 slumpSamples += features
                 val elapsed = nowMs - calibrationStartedAt
                 _ui.value = _ui.value.copy(
-                    statusMessage = "Hold still… ${slumpSamples.size.coerceAtMost(minSamples)}/$minSamples",
+                    statusKey = StatusCopyKey.SESSION_HOLD_STILL_PROGRESS,
+                    statusArgs = listOf(slumpSamples.size.coerceAtMost(minSamples), minSamples),
                 )
                 if (elapsed >= captureMs && slumpSamples.size >= minSamples) {
                     finishDualCalibration(nowMs)
@@ -522,7 +526,7 @@ class DesktopPostureSession {
             _ui.value = _ui.value.copy(
                 calibrationPhase = CalibrationPhase.NONE,
                 issue = DesktopIssue.CalibrationPosesTooSimilar,
-                statusMessage = "Poses too similar.",
+                statusKey = StatusCopyKey.SESSION_POSES_TOO_SIMILAR,
             )
             return
         }
@@ -532,7 +536,7 @@ class DesktopPostureSession {
             calibrationPhase = CalibrationPhase.COMPLETE,
             hasCalibration = true,
             hasErectCapture = true,
-            statusMessage = "Calibration complete.",
+            statusKey = StatusCopyKey.SESSION_CALIBRATION_COMPLETE,
             issue = null,
         )
     }

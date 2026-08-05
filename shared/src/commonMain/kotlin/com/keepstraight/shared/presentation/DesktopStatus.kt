@@ -40,9 +40,13 @@ enum class BridgeConnectionState {
 
 data class DesktopStatusPresentation(
     val tone: DesktopStatusTone,
-    val title: String,
-    val body: String,
-    val presenceLabel: String? = null,
+    val titleKey: StatusCopyKey,
+    val bodyKey: StatusCopyKey,
+    val titleArgs: List<Any> = emptyList(),
+    val bodyArgs: List<Any> = emptyList(),
+    /** When set, shown instead of [bodyKey] (e.g. bridge pair error detail). */
+    val bodyOverride: String? = null,
+    val presenceKey: StatusCopyKey? = null,
     val primaryAction: DesktopStatusAction? = null,
     val secondaryAction: DesktopStatusAction? = null,
     val showProgress: Boolean = false,
@@ -67,7 +71,8 @@ object DesktopStatusMapper {
         hasCalibration: Boolean,
         isSlumped: Boolean,
         slumpScore: Float,
-        statusMessage: String,
+        statusKey: StatusCopyKey,
+        statusArgs: List<Any>,
         issue: DesktopIssue?,
         bridgeState: BridgeConnectionState,
         modelReady: Boolean,
@@ -81,15 +86,15 @@ object DesktopStatusMapper {
         when (calibrationPhase) {
             CalibrationPhase.CAPTURE_ERECT -> return DesktopStatusPresentation(
                 tone = DesktopStatusTone.PROGRESS,
-                title = "Calibrating — erect",
-                body = "Hold good sitting posture…",
+                titleKey = StatusCopyKey.STATUS_CALIBRATING_ERECT,
+                bodyKey = StatusCopyKey.BODY_HOLD_GOOD_SITTING,
                 showProgress = true,
                 secondaryAction = DesktopStatusAction.STOP_SESSION,
             )
             CalibrationPhase.CAPTURE_SLUMP -> return DesktopStatusPresentation(
                 tone = DesktopStatusTone.PROGRESS,
-                title = "Calibrating — slumped",
-                body = "Hold your usual slouch…",
+                titleKey = StatusCopyKey.STATUS_CALIBRATING_SLUMPED,
+                bodyKey = StatusCopyKey.BODY_HOLD_USUAL_SLOUCH,
                 showProgress = true,
             )
             else -> Unit
@@ -100,47 +105,40 @@ object DesktopStatusMapper {
                 if (!hasCalibration) {
                     DesktopStatusPresentation(
                         tone = DesktopStatusTone.WARNING,
-                        title = "Calibration needed",
-                        body = "Calibrate erect, then slumped, before monitoring.",
+                        titleKey = StatusCopyKey.STATUS_CALIBRATION_NEEDED,
+                        bodyKey = StatusCopyKey.BODY_CALIBRATE_BEFORE_MONITOR,
                         primaryAction = DesktopStatusAction.CALIBRATE_ERECT,
                     )
                 } else {
                     DesktopStatusPresentation(
                         tone = DesktopStatusTone.NEUTRAL,
-                        title = "Ready",
-                        body = statusMessage.ifBlank { "Start a session to monitor posture." },
-                        presenceLabel = null,
+                        titleKey = StatusCopyKey.STATUS_READY,
+                        bodyKey = statusKey,
+                        bodyArgs = statusArgs,
+                        presenceKey = null,
                     )
                 }
             }
             DesktopSessionPhase.PAUSED -> {
-                val (title, body, tone) = when (presence) {
-                    PresenceState.STANDING -> Triple(
-                        "Paused — Standing",
-                        "Standing desk posture is not monitored in v1.",
-                        DesktopStatusTone.WARNING,
-                    )
-                    PresenceState.AWAY -> Triple(
-                        "Paused — Away",
-                        "No person detected. Sit in frame facing the camera.",
-                        DesktopStatusTone.WARNING,
-                    )
-                    PresenceState.LOW_CONFIDENCE -> Triple(
-                        "Paused — Face the camera",
-                        "Pose is unclear (dark room, profile, or low confidence).",
-                        DesktopStatusTone.WARNING,
-                    )
-                    PresenceState.SITTING -> Triple(
-                        "Paused",
-                        statusMessage.ifBlank { "Monitoring paused." },
-                        DesktopStatusTone.WARNING,
-                    )
+                val (titleKey, bodyKey) = when (presence) {
+                    PresenceState.STANDING -> StatusCopyKey.STATUS_PAUSED_STANDING to StatusCopyKey.BODY_PAUSED_STANDING
+                    PresenceState.AWAY -> StatusCopyKey.STATUS_PAUSED_AWAY to StatusCopyKey.BODY_PAUSED_AWAY
+                    PresenceState.LOW_CONFIDENCE ->
+                        StatusCopyKey.STATUS_PAUSED_FACE_CAMERA to StatusCopyKey.BODY_PAUSED_FACE_CAMERA
+                    PresenceState.SITTING ->
+                        StatusCopyKey.STATUS_PAUSED to
+                            if (statusKey == StatusCopyKey.BODY_START_SESSION) {
+                                StatusCopyKey.BODY_MONITORING_PAUSED
+                            } else {
+                                statusKey
+                            }
                 }
                 DesktopStatusPresentation(
-                    tone = tone,
-                    title = title,
-                    body = body,
-                    presenceLabel = presenceLabel(presence),
+                    tone = DesktopStatusTone.WARNING,
+                    titleKey = titleKey,
+                    bodyKey = bodyKey,
+                    bodyArgs = if (presence == PresenceState.SITTING) statusArgs else emptyList(),
+                    presenceKey = presenceKey(presence),
                     primaryAction = DesktopStatusAction.STOP_SESSION,
                 )
             }
@@ -148,16 +146,17 @@ object DesktopStatusMapper {
                 if (isSlumped) {
                     DesktopStatusPresentation(
                         tone = DesktopStatusTone.ERROR,
-                        title = "Slouching",
-                        body = "Sit up straight. Score ${(slumpScore * 100).toInt()}%.",
-                        presenceLabel = presenceLabel(presence),
+                        titleKey = StatusCopyKey.STATUS_SLOUCHING,
+                        bodyKey = StatusCopyKey.BODY_SLOUCHING_SCORE,
+                        bodyArgs = listOf((slumpScore * 100).toInt()),
+                        presenceKey = presenceKey(presence),
                     )
                 } else {
                     DesktopStatusPresentation(
                         tone = DesktopStatusTone.SUCCESS,
-                        title = "Looking good",
-                        body = "Monitoring sitting posture.",
-                        presenceLabel = presenceLabel(presence),
+                        titleKey = StatusCopyKey.STATUS_LOOKING_GOOD,
+                        bodyKey = StatusCopyKey.BODY_MONITORING_SITTING,
+                        presenceKey = presenceKey(presence),
                     )
                 }
             }
@@ -171,79 +170,74 @@ object DesktopStatusMapper {
         is DesktopIssue.Camera -> when (issue.error) {
             CameraError.IN_USE -> DesktopStatusPresentation(
                 tone = DesktopStatusTone.ERROR,
-                title = "Camera in use",
-                body = "Another app (Zoom/Meet/Teams) is using the camera. Close it, then retry.",
+                titleKey = StatusCopyKey.STATUS_CAMERA_IN_USE,
+                bodyKey = StatusCopyKey.BODY_CAMERA_IN_USE,
                 primaryAction = DesktopStatusAction.RETRY_CAMERA,
                 secondaryAction = DesktopStatusAction.REFRESH_CAMERAS,
             )
             CameraError.PERMISSION_DENIED -> DesktopStatusPresentation(
                 tone = DesktopStatusTone.ERROR,
-                title = "Camera permission needed",
-                body = "Allow KeepStraight (or Terminal / your IDE) to use the camera, then quit and reopen:\n" +
-                    "• Mac: System Settings → Privacy & Security → Camera\n" +
-                    "• Windows: Settings → Privacy & security → Camera → let desktop apps access your camera\n" +
-                    "• Linux: make sure your user can read /dev/video* (often the “video” group)",
+                titleKey = StatusCopyKey.STATUS_CAMERA_PERMISSION,
+                bodyKey = StatusCopyKey.BODY_CAMERA_PERMISSION,
                 primaryAction = DesktopStatusAction.RETRY_CAMERA,
                 secondaryAction = DesktopStatusAction.REFRESH_CAMERAS,
             )
             CameraError.NOT_FOUND -> DesktopStatusPresentation(
                 tone = DesktopStatusTone.ERROR,
-                title = "No camera found",
-                body = "Plug in a webcam or pick another device, then refresh.\n" +
-                    "• Mac / Windows: also check the OS camera privacy toggle\n" +
-                    "• Linux: confirm a V4L2 device exists (`ls /dev/video*`)",
+                titleKey = StatusCopyKey.STATUS_NO_CAMERA,
+                bodyKey = StatusCopyKey.BODY_NO_CAMERA,
                 primaryAction = DesktopStatusAction.REFRESH_CAMERAS,
                 secondaryAction = DesktopStatusAction.RETRY_CAMERA,
             )
             CameraError.OPEN_FAILED -> DesktopStatusPresentation(
                 tone = DesktopStatusTone.ERROR,
-                title = "Could not open camera",
-                body = "The camera failed to open. Try another device or restart the app.\n" +
-                    "On Linux ARM (aarch64), native webcam drivers aren’t bundled yet — use an x86_64 build if you can.",
+                titleKey = StatusCopyKey.STATUS_CAMERA_OPEN_FAILED,
+                bodyKey = StatusCopyKey.BODY_CAMERA_OPEN_FAILED,
                 primaryAction = DesktopStatusAction.RETRY_CAMERA,
                 secondaryAction = DesktopStatusAction.REFRESH_CAMERAS,
             )
             CameraError.DISCONNECTED -> DesktopStatusPresentation(
                 tone = DesktopStatusTone.ERROR,
-                title = "Camera disconnected",
-                body = "The webcam was disconnected. Reconnect it and retry.",
+                titleKey = StatusCopyKey.STATUS_CAMERA_DISCONNECTED,
+                bodyKey = StatusCopyKey.BODY_CAMERA_DISCONNECTED,
                 primaryAction = DesktopStatusAction.RETRY_CAMERA,
             )
         }
         DesktopIssue.ModelMissing -> DesktopStatusPresentation(
             tone = DesktopStatusTone.ERROR,
-            title = "Pose model missing",
-            body = "Run desktopApp/scripts/download-movenet.sh, then restart KeepStraight.",
+            titleKey = StatusCopyKey.STATUS_POSE_MODEL_MISSING,
+            bodyKey = StatusCopyKey.BODY_POSE_MODEL_MISSING,
         )
         DesktopIssue.NeedsCalibration -> DesktopStatusPresentation(
             tone = DesktopStatusTone.WARNING,
-            title = "Calibration needed",
-            body = "Calibrate erect, then slumped, before monitoring.",
+            titleKey = StatusCopyKey.STATUS_CALIBRATION_NEEDED,
+            bodyKey = StatusCopyKey.BODY_CALIBRATE_BEFORE_MONITOR,
             primaryAction = DesktopStatusAction.CALIBRATE_ERECT,
         )
         DesktopIssue.CalibrationNeedsErectFirst -> DesktopStatusPresentation(
             tone = DesktopStatusTone.WARNING,
-            title = "Calibrate erect first",
-            body = "Capture your good sitting posture before the slumped pose.",
+            titleKey = StatusCopyKey.STATUS_CALIBRATE_ERECT_FIRST,
+            bodyKey = StatusCopyKey.BODY_CALIBRATE_ERECT_FIRST,
             primaryAction = DesktopStatusAction.CALIBRATE_ERECT,
         )
         DesktopIssue.CalibrationPosesTooSimilar -> DesktopStatusPresentation(
             tone = DesktopStatusTone.ERROR,
-            title = "Poses too similar",
-            body = "Sit up clearly, then slouch more (round shoulders / lean forward) and retry.",
+            titleKey = StatusCopyKey.STATUS_POSES_TOO_SIMILAR,
+            bodyKey = StatusCopyKey.BODY_POSES_TOO_SIMILAR,
             primaryAction = DesktopStatusAction.CALIBRATE_ERECT,
             secondaryAction = DesktopStatusAction.CALIBRATE_SLUMP,
         )
         DesktopIssue.CalibrationNoPose -> DesktopStatusPresentation(
             tone = DesktopStatusTone.ERROR,
-            title = "No pose detected",
-            body = "Sit facing the camera with good light, then try calibration again.",
+            titleKey = StatusCopyKey.STATUS_NO_POSE,
+            bodyKey = StatusCopyKey.BODY_NO_POSE_CALIBRATE,
             primaryAction = DesktopStatusAction.CALIBRATE,
         )
         is DesktopIssue.BridgePairFailed -> DesktopStatusPresentation(
             tone = DesktopStatusTone.ERROR,
-            title = "Phone pairing failed",
-            body = issue.detail.ifBlank { "Check Wi‑Fi, phone IP, and the one-time code." },
+            titleKey = StatusCopyKey.STATUS_BRIDGE_PAIR_FAILED,
+            bodyKey = StatusCopyKey.BODY_BRIDGE_PAIR_FAILED_DEFAULT,
+            bodyOverride = issue.detail.takeIf { it.isNotBlank() },
             primaryAction = DesktopStatusAction.REPAIR_BRIDGE,
         )
         DesktopIssue.BridgeSendFailed -> DesktopStatusPresentation(
@@ -252,30 +246,30 @@ object DesktopStatusMapper {
             } else {
                 DesktopStatusTone.WARNING
             },
-            title = "Phone bridge unreachable",
-            body = "Desktop alerts still work. Watch/history sync failed — check Wi‑Fi or re-pair.",
+            titleKey = StatusCopyKey.STATUS_BRIDGE_UNREACHABLE,
+            bodyKey = StatusCopyKey.BODY_BRIDGE_UNREACHABLE,
             primaryAction = DesktopStatusAction.REPAIR_BRIDGE,
             secondaryAction = DesktopStatusAction.CLEAR_BRIDGE,
         )
         DesktopIssue.BridgeUnauthorized -> DesktopStatusPresentation(
             tone = DesktopStatusTone.ERROR,
-            title = "Phone bridge expired",
-            body = "Generate a new code on the phone and pair again.",
+            titleKey = StatusCopyKey.STATUS_BRIDGE_EXPIRED,
+            bodyKey = StatusCopyKey.BODY_BRIDGE_EXPIRED,
             primaryAction = DesktopStatusAction.REPAIR_BRIDGE,
             secondaryAction = DesktopStatusAction.CLEAR_BRIDGE,
         )
         DesktopIssue.TooDarkOrLowConfidence -> DesktopStatusPresentation(
             tone = DesktopStatusTone.WARNING,
-            title = "Too dark / unclear",
-            body = "Improve lighting or face the camera. Alerts are paused.",
+            titleKey = StatusCopyKey.STATUS_TOO_DARK,
+            bodyKey = StatusCopyKey.BODY_TOO_DARK,
         )
     }
 
-    private fun presenceLabel(presence: PresenceState): String =
+    private fun presenceKey(presence: PresenceState): StatusCopyKey =
         when (presence) {
-            PresenceState.SITTING -> "Sitting"
-            PresenceState.STANDING -> "Standing"
-            PresenceState.AWAY -> "Away"
-            PresenceState.LOW_CONFIDENCE -> "Low confidence"
+            PresenceState.SITTING -> StatusCopyKey.PRESENCE_SITTING
+            PresenceState.STANDING -> StatusCopyKey.PRESENCE_STANDING
+            PresenceState.AWAY -> StatusCopyKey.PRESENCE_AWAY
+            PresenceState.LOW_CONFIDENCE -> StatusCopyKey.PRESENCE_LOW_CONFIDENCE
         }
 }
