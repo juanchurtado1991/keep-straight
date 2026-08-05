@@ -1,0 +1,9 @@
+KeepStraight — Windows install notes
+====================================
+
+1. Run the MSI or EXE installer (SmartScreen may warn on unsigned builds).
+2. On your Android phone: enable Developer options → Wireless debugging.
+3. Allow KeepStraight through Windows Defender Firewall on private networks.
+4. Phone and PC must be on the same Wi‑Fi for QR pairing.
+
+If desktop alerts are silent, check notification settings for KeepStraight.

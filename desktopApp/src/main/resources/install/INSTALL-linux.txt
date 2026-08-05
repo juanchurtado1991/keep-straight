@@ -1,0 +1,18 @@
+KeepStraight — Linux install notes
+==================================
+
+Install (Debian/Ubuntu):
+  sudo dpkg -i keepstraight_*_amd64.deb
+  sudo apt install -f
+
+If the camera does not open:
+  sudo usermod -aG video $USER
+  (log out and back in)
+
+If notifications are silent:
+  sudo apt install libnotify-bin
+
+Same Wi‑Fi is required for wireless phone/watch setup.
+On Wayland, use the window menu to quit — the tray icon may be unavailable.
+
+ARM64: companion sideload and some webcams require x86_64 builds today.

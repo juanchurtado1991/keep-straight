@@ -339,15 +339,16 @@ class AdbInstaller(
     }
 
     private fun extractResourceApk(path: String): File? {
-        val stream = javaClass.classLoader.getResourceAsStream(path) ?: return null
+        val bytes = javaClass.classLoader.getResourceAsStream(path)?.use { it.readBytes() } ?: return null
         val outDir = File(System.getProperty("java.io.tmpdir"), "keepstraight-apks")
         outDir.mkdirs()
-        val out = File(outDir, File(path).name)
-        if (out.isFile && out.length() > 0) {
+        val versionTag = bytes.contentHashCode().toUInt().toString(16)
+        val out = File(outDir, "${File(path).name}.$versionTag")
+        if (out.isFile && out.length() == bytes.size.toLong()) {
             return out
         }
         return try {
-            stream.use { input -> out.outputStream().use { output -> input.copyTo(output) } }
+            out.writeBytes(bytes)
             out.takeIf { it.isFile && it.length() > 0 }
         } catch (_: Exception) {
             out.takeIf { it.isFile && it.length() > 0 }

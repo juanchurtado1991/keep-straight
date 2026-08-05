@@ -54,6 +54,13 @@ compose.desktop {
                     extraKeysRawXml = """
                         <key>NSCameraUsageDescription</key>
                         <string>KeepStraight uses the camera for live posture detection. Frames are not saved.</string>
+                        <key>NSLocalNetworkUsageDescription</key>
+                        <string>KeepStraight finds your phone on the local network to sync alerts and install companion apps.</string>
+                        <key>NSBonjourServices</key>
+                        <array>
+                            <string>_adb-tls-pairing._tcp</string>
+                            <string>_adb-tls-connect._tcp</string>
+                        </array>
                     """.trimIndent()
                 }
             }
@@ -121,6 +128,36 @@ val syncCompanionApks = tasks.register("syncCompanionApks") {
     }
 }
 
+val validateDesktopBundle = tasks.register("validateDesktopBundle") {
+    group = "keepstraight"
+    description = "Fails the build if bundled APKs or the MoveNet model are missing."
+    dependsOn(syncCompanionApks)
+    doLast {
+        if (skipApkSync) return@doLast
+        val apkDir = stagedApkRoot.get().dir("apks").asFile
+        when (companionApksMode) {
+            "phone" -> check(apkDir.resolve("keepstraight-phone.apk").isFile) {
+                "Missing staged phone APK. Run :desktopApp:syncCompanionApks or build release APKs."
+            }
+            "wear" -> check(apkDir.resolve("keepstraight-wear.apk").isFile) {
+                "Missing staged wear APK. Run :desktopApp:syncCompanionApks or build release APKs."
+            }
+            else -> {
+                check(apkDir.resolve("keepstraight-phone.apk").isFile) {
+                    "Missing staged phone APK. Run :desktopApp:syncCompanionApks."
+                }
+                check(apkDir.resolve("keepstraight-wear.apk").isFile) {
+                    "Missing staged wear APK. Run :desktopApp:syncCompanionApks."
+                }
+            }
+        }
+        val model = layout.projectDirectory.file("src/main/resources/models/movenet_lightning.onnx").asFile
+        check(model.isFile) {
+            "Missing MoveNet model at ${model.path}. Run desktopApp/scripts/download-movenet.sh before packaging."
+        }
+    }
+}
+
 sourceSets.named("main") {
     resources.srcDir(stagedApkRoot)
 }
@@ -156,6 +193,16 @@ tasks.named<ProcessResources>("processResources") {
         if (folder != null && folder != platform && folder != "NOTICE.txt") {
             exclude()
         }
+    }
+    when (companionApksMode) {
+        "phone" -> filesMatching("**/keepstraight-wear.apk") { exclude() }
+        "wear" -> filesMatching("**/keepstraight-phone.apk") { exclude() }
+    }
+}
+
+listOf("packageDeb", "packageMsi", "packageExe", "packageDmg", "createDistributable").forEach { taskName ->
+    tasks.matching { it.name.equals(taskName, ignoreCase = true) }.configureEach {
+        dependsOn(validateDesktopBundle)
     }
 }
 

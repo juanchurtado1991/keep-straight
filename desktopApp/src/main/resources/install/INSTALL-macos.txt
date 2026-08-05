@@ -1,0 +1,10 @@
+KeepStraight — macOS install notes
+==================================
+
+1. Open the DMG and drag KeepStraight to Applications.
+2. First launch: right-click KeepStraight → Open (Gatekeeper).
+3. Allow Camera and Local Network when macOS prompts.
+4. Phone and Mac must share the same Wi‑Fi for QR pairing.
+
+Notifications use KeepStraightNotify in ~/Applications.
+Release builds should be notarized; ad-hoc builds may need Privacy settings adjusted.
