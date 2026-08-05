@@ -81,6 +81,13 @@ import com.keepstraight.desktop.generated.resources.msg_login_open_at_unavailabl
 import com.keepstraight.desktop.generated.resources.msg_login_register_failed
 import com.keepstraight.desktop.generated.resources.msg_pair_assist_invalid_qr
 import com.keepstraight.desktop.generated.resources.msg_pair_assist_update_app
+import com.keepstraight.desktop.generated.resources.msg_notifier_generic_failure
+import com.keepstraight.desktop.generated.resources.msg_notifier_linux_notify_missing
+import com.keepstraight.desktop.generated.resources.msg_notifier_mac_blocked
+import com.keepstraight.desktop.generated.resources.msg_notifier_mac_helper_failed
+import com.keepstraight.desktop.generated.resources.msg_notifier_mac_helper_missing
+import com.keepstraight.desktop.generated.resources.msg_notifier_tray_fallback
+import com.keepstraight.desktop.generated.resources.msg_notifier_windows_failed
 import com.keepstraight.desktop.generated.resources.msg_test_notification_body
 import com.keepstraight.desktop.generated.resources.msg_test_notification_failed
 import com.keepstraight.desktop.generated.resources.msg_test_notification_limited
@@ -188,8 +195,15 @@ object DesktopMessageResolver {
         DesktopMessageKey.TEST_NOTIFICATION_TITLE -> stringResource(Res.string.msg_test_notification_title)
         DesktopMessageKey.TEST_NOTIFICATION_BODY -> stringResource(Res.string.msg_test_notification_body)
         DesktopMessageKey.TEST_NOTIFICATION_SENT -> stringResource(Res.string.msg_test_notification_sent)
-        DesktopMessageKey.TEST_NOTIFICATION_LIMITED -> stringResource(Res.string.msg_test_notification_limited, args[0] as String)
-        DesktopMessageKey.TEST_NOTIFICATION_FAILED -> stringResource(Res.string.msg_test_notification_failed, args[0] as String)
+        DesktopMessageKey.TEST_NOTIFICATION_LIMITED -> stringResource(Res.string.msg_test_notification_limited)
+        DesktopMessageKey.TEST_NOTIFICATION_FAILED -> stringResource(Res.string.msg_test_notification_failed)
+        DesktopMessageKey.NOTIFIER_MAC_BLOCKED -> stringResource(Res.string.msg_notifier_mac_blocked)
+        DesktopMessageKey.NOTIFIER_MAC_HELPER_FAILED -> stringResource(Res.string.msg_notifier_mac_helper_failed)
+        DesktopMessageKey.NOTIFIER_MAC_HELPER_MISSING -> stringResource(Res.string.msg_notifier_mac_helper_missing)
+        DesktopMessageKey.NOTIFIER_TRAY_FALLBACK -> stringResource(Res.string.msg_notifier_tray_fallback)
+        DesktopMessageKey.NOTIFIER_WINDOWS_FAILED -> stringResource(Res.string.msg_notifier_windows_failed)
+        DesktopMessageKey.NOTIFIER_LINUX_NOTIFY_MISSING -> stringResource(Res.string.msg_notifier_linux_notify_missing)
+        DesktopMessageKey.NOTIFIER_GENERIC_FAILURE -> stringResource(Res.string.msg_notifier_generic_failure)
         DesktopMessageKey.ADB_PREPARE_FAILED_TITLE -> stringResource(Res.string.msg_adb_prepare_failed_title)
         DesktopMessageKey.ADB_PREPARE_FAILED_BODY -> stringResource(Res.string.msg_adb_prepare_failed_body)
         DesktopMessageKey.ADB_MISSING_TITLE -> stringResource(Res.string.msg_adb_missing_title)

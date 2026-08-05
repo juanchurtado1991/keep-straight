@@ -51,7 +51,7 @@ class JvmCameraFrameSource : CameraFrameSource {
         WebcamBootstrap.ensureInitialized()
         val list = try {
             Webcam.getWebcams().mapIndexed { index, cam ->
-                val name = cam.name?.takeIf { it.isNotBlank() } ?: "Camera $index"
+                val name = cam.name?.takeIf { it.isNotBlank() } ?: "$CAMERA_FALLBACK_PREFIX$index"
                 CameraDeviceInfo(
                     id = name,
                     name = name,
@@ -245,4 +245,9 @@ class JvmCameraFrameSource : CameraFrameSource {
     }
 
     private fun abs(v: Int): Int = if (v < 0) -v else v
+
+    private companion object {
+        /** Matched by desktop [com.keepstraight.desktop.ui.i18n.DesktopStrings.cameraDisplayName]. */
+        const val CAMERA_FALLBACK_PREFIX = "Camera "
+    }
 }

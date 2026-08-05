@@ -63,13 +63,11 @@ fun WirelessPhoneInstallStep(
     var busy by remember { mutableStateOf(false) }
     var adbError by remember { mutableStateOf<AdbResult.Err?>(null) }
     var unexpectedError by remember { mutableStateOf<UserMessage?>(null) }
-    var errorDetail by remember { mutableStateOf<String?>(null) }
     var pairJob by remember { mutableStateOf<Job?>(null) }
 
     fun clearError() {
         adbError = null
         unexpectedError = null
-        errorDetail = null
     }
 
     fun startPairing() {
@@ -93,20 +91,18 @@ fun WirelessPhoneInstallStep(
                             is AdbResult.Err -> {
                                 busy = false
                                 adbError = installed
-                                errorDetail = installed.detail
                             }
                         }
                     }
                     is AdbResult.Err -> {
                         busy = false
                         adbError = connected
-                        errorDetail = connected.detail
                     }
                 }
-            } catch (e: Exception) {
+            } catch (exception: Exception) {
                 busy = false
                 unexpectedError = UserMessage(DesktopMessageKey.WIZARD_UNEXPECTED_ERROR)
-                errorDetail = e.message?.takeIf { it.isNotBlank() }
+                exception.printStackTrace()
             }
         }
     }
@@ -159,7 +155,6 @@ fun WirelessPhoneInstallStep(
                 DesktopErrorPanel(
                     title = DesktopMessageResolver.text(err.titleKey),
                     body = DesktopMessageResolver.text(err.bodyKey),
-                    detail = errorDetail,
                     primaryLabel = DesktopStrings.actionTryAgain(),
                     onPrimary = { startPairing() },
                     secondaryLabel = DesktopStrings.actionSkipForNow(),
@@ -171,7 +166,6 @@ fun WirelessPhoneInstallStep(
                 DesktopErrorPanel(
                     title = DesktopMessageResolver.text(it.key),
                     body = DesktopMessageResolver.text(DesktopMessageKey.WIZARD_UNEXPECTED_ERROR_BODY_PHONE),
-                    detail = errorDetail,
                     primaryLabel = DesktopStrings.actionTryAgain(),
                     onPrimary = { startPairing() },
                     secondaryLabel = DesktopStrings.actionSkipForNow(),

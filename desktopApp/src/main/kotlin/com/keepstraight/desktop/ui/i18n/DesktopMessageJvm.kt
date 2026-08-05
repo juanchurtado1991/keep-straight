@@ -19,6 +19,13 @@ import com.keepstraight.desktop.generated.resources.msg_login_open_at_unavailabl
 import com.keepstraight.desktop.generated.resources.msg_login_register_failed
 import com.keepstraight.desktop.generated.resources.msg_pair_assist_invalid_qr
 import com.keepstraight.desktop.generated.resources.msg_pair_assist_update_app
+import com.keepstraight.desktop.generated.resources.msg_notifier_generic_failure
+import com.keepstraight.desktop.generated.resources.msg_notifier_linux_notify_missing
+import com.keepstraight.desktop.generated.resources.msg_notifier_mac_blocked
+import com.keepstraight.desktop.generated.resources.msg_notifier_mac_helper_failed
+import com.keepstraight.desktop.generated.resources.msg_notifier_mac_helper_missing
+import com.keepstraight.desktop.generated.resources.msg_notifier_tray_fallback
+import com.keepstraight.desktop.generated.resources.msg_notifier_windows_failed
 import com.keepstraight.desktop.generated.resources.msg_test_notification_body
 import com.keepstraight.desktop.generated.resources.msg_test_notification_failed
 import com.keepstraight.desktop.generated.resources.msg_test_notification_limited
@@ -62,14 +69,15 @@ object DesktopMessageJvm {
             DesktopMessageKey.TEST_NOTIFICATION_TITLE -> getString(Res.string.msg_test_notification_title)
             DesktopMessageKey.TEST_NOTIFICATION_BODY -> getString(Res.string.msg_test_notification_body)
             DesktopMessageKey.TEST_NOTIFICATION_SENT -> getString(Res.string.msg_test_notification_sent)
-            DesktopMessageKey.TEST_NOTIFICATION_LIMITED -> getString(
-                Res.string.msg_test_notification_limited,
-                args[0] as String,
-            )
-            DesktopMessageKey.TEST_NOTIFICATION_FAILED -> getString(
-                Res.string.msg_test_notification_failed,
-                args[0] as String,
-            )
+            DesktopMessageKey.TEST_NOTIFICATION_LIMITED -> getString(Res.string.msg_test_notification_limited)
+            DesktopMessageKey.TEST_NOTIFICATION_FAILED -> getString(Res.string.msg_test_notification_failed)
+            DesktopMessageKey.NOTIFIER_MAC_BLOCKED -> getString(Res.string.msg_notifier_mac_blocked)
+            DesktopMessageKey.NOTIFIER_MAC_HELPER_FAILED -> getString(Res.string.msg_notifier_mac_helper_failed)
+            DesktopMessageKey.NOTIFIER_MAC_HELPER_MISSING -> getString(Res.string.msg_notifier_mac_helper_missing)
+            DesktopMessageKey.NOTIFIER_TRAY_FALLBACK -> getString(Res.string.msg_notifier_tray_fallback)
+            DesktopMessageKey.NOTIFIER_WINDOWS_FAILED -> getString(Res.string.msg_notifier_windows_failed)
+            DesktopMessageKey.NOTIFIER_LINUX_NOTIFY_MISSING -> getString(Res.string.msg_notifier_linux_notify_missing)
+            DesktopMessageKey.NOTIFIER_GENERIC_FAILURE -> getString(Res.string.msg_notifier_generic_failure)
             DesktopMessageKey.PAIR_ASSIST_INVALID_QR -> getString(Res.string.msg_pair_assist_invalid_qr)
             DesktopMessageKey.PAIR_ASSIST_UPDATE_APP -> getString(Res.string.msg_pair_assist_update_app)
             DesktopMessageKey.BRIDGE_PAIRED_PROTOCOL -> getString(Res.string.msg_bridge_paired_protocol)

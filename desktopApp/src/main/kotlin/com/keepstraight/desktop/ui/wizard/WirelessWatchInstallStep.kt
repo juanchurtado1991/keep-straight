@@ -59,23 +59,20 @@ fun WirelessWatchInstallStep(
     var showManual by remember { mutableStateOf(false) }
     var adbError by remember { mutableStateOf<AdbResult.Err?>(null) }
     var userError by remember { mutableStateOf<UserMessage?>(null) }
-    var errorDetail by remember { mutableStateOf<String?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
 
     fun clearError() {
         adbError = null
         userError = null
-        errorDetail = null
     }
 
     fun showError(err: AdbResult.Err) {
         adbError = err
-        errorDetail = err.detail
     }
 
-    fun showUnexpected(e: Throwable) {
+    fun showUnexpected(throwable: Throwable) {
+        throwable.printStackTrace()
         userError = UserMessage(DesktopMessageKey.WIZARD_UNEXPECTED_ERROR)
-        errorDetail = e.message?.takeIf { it.isNotBlank() }
     }
 
     fun refreshWatches() {
@@ -148,7 +145,6 @@ fun WirelessWatchInstallStep(
         val port = raw.substringAfterLast(':', "").toIntOrNull()
         if (host.isEmpty() || port == null) {
             userError = UserMessage(DesktopMessageKey.WIZARD_ADDRESS_INVALID)
-            errorDetail = null
             return
         }
         job?.cancel()
@@ -273,7 +269,6 @@ fun WirelessWatchInstallStep(
                 DesktopErrorPanel(
                     title = DesktopMessageResolver.text(err.titleKey),
                     body = DesktopMessageResolver.text(err.bodyKey),
-                    detail = errorDetail,
                     primaryLabel = DesktopStrings.actionTryAgain(),
                     onPrimary = {
                         if (readyWatches.isNotEmpty()) {
@@ -297,7 +292,6 @@ fun WirelessWatchInstallStep(
                 DesktopErrorPanel(
                     title = DesktopMessageResolver.text(err.key),
                     body = DesktopMessageResolver.text(bodyKey),
-                    detail = errorDetail,
                     primaryLabel = DesktopStrings.actionTryAgain(),
                     onPrimary = {
                         if (err.key == DesktopMessageKey.WIZARD_ADDRESS_INVALID) {

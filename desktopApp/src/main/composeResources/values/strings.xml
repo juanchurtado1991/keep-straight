@@ -291,8 +291,15 @@ On Linux ARM (aarch64), native webcam drivers aren’t bundled yet — use an x8
     <string name="msg_test_notification_title">KeepStraight</string>
     <string name="msg_test_notification_body">Test notification — if you see this, alerts will work in the tray.</string>
     <string name="msg_test_notification_sent">Test notification sent.</string>
-    <string name="msg_test_notification_limited">Test notification: %1$s</string>
-    <string name="msg_test_notification_failed">Test notification failed: %1$s</string>
+    <string name="msg_test_notification_limited">Test notification was limited — check system notification settings.</string>
+    <string name="msg_test_notification_failed">Test notification failed.</string>
+    <string name="msg_notifier_mac_blocked">macOS blocked notifications — allow KeepStraight in System Settings → Notifications.</string>
+    <string name="msg_notifier_mac_helper_failed">The notification helper failed.</string>
+    <string name="msg_notifier_mac_helper_missing">Notification helper not bundled — rebuild the desktop app.</string>
+    <string name="msg_notifier_tray_fallback">Showed a tray banner instead of a system notification.</string>
+    <string name="msg_notifier_windows_failed">Windows toast failed.</string>
+    <string name="msg_notifier_linux_notify_missing">Install libnotify (notify-send) for desktop notifications.</string>
+    <string name="msg_notifier_generic_failure">Notification failed unexpectedly.</string>
     <string name="msg_adb_prepare_failed_title">Couldn’t prepare the installer tool</string>
     <string name="msg_adb_prepare_failed_body">Close other Android tools (Android Studio, platform-tools), then try again. If it keeps failing, restart KeepStraight.</string>
     <string name="msg_adb_missing_title">Something’s missing on this computer</string>

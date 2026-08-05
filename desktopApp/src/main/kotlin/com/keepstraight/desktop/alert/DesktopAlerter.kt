@@ -24,9 +24,9 @@ class DesktopAlerter(
             val result = NativeDesktopNotifier.notify(title, message)
             notified = result.shown
             if (!result.shown) {
-                System.err.println("KeepStraight: native notification failed (${result.detail})")
-            } else if (result.limited && result.detail != null) {
-                System.err.println("KeepStraight: native notification limited (${result.detail})")
+                System.err.println("KeepStraight: native notification failed (${result.detailKey})")
+            } else if (result.limited && result.detailKey != null) {
+                System.err.println("KeepStraight: native notification limited (${result.detailKey})")
             }
         }
 

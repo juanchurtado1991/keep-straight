@@ -284,8 +284,15 @@ En Linux ARM (aarch64) aún no hay drivers nativos — usa una compilación x86_
     <string name="msg_test_notification_title">KeepStraight</string>
     <string name="msg_test_notification_body">Notificación de prueba — si la ves, las alertas funcionarán en la bandeja.</string>
     <string name="msg_test_notification_sent">Notificación de prueba enviada.</string>
-    <string name="msg_test_notification_limited">Notificación de prueba: %1$s</string>
-    <string name="msg_test_notification_failed">Falló la notificación de prueba: %1$s</string>
+    <string name="msg_test_notification_limited">La notificación de prueba fue limitada — revisa los ajustes del sistema.</string>
+    <string name="msg_test_notification_failed">Falló la notificación de prueba.</string>
+    <string name="msg_notifier_mac_blocked">macOS bloqueó las notificaciones — permite KeepStraight en Ajustes del sistema → Notificaciones.</string>
+    <string name="msg_notifier_mac_helper_failed">Falló el helper de notificaciones.</string>
+    <string name="msg_notifier_mac_helper_missing">Falta el helper de notificaciones — recompila la app de escritorio.</string>
+    <string name="msg_notifier_tray_fallback">Se mostró un banner en la bandeja en lugar de una notificación del sistema.</string>
+    <string name="msg_notifier_windows_failed">Falló el toast de Windows.</string>
+    <string name="msg_notifier_linux_notify_missing">Instala libnotify (notify-send) para notificaciones de escritorio.</string>
+    <string name="msg_notifier_generic_failure">La notificación falló inesperadamente.</string>
     <string name="msg_adb_prepare_failed_title">No se pudo preparar la herramienta de instalación</string>
     <string name="msg_adb_prepare_failed_body">Cierra otras herramientas Android (Android Studio, platform-tools) e inténtalo de nuevo. Si sigue fallando, reinicia KeepStraight.</string>
     <string name="msg_adb_missing_title">Falta algo en este equipo</string>

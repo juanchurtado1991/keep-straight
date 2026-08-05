@@ -1,5 +1,6 @@
 package com.keepstraight.desktop.alert
 
+import com.keepstraight.desktop.presentation.DesktopMessageKey
 import java.io.File
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -14,7 +15,11 @@ import java.util.concurrent.atomic.AtomicReference
  */
 object NativeDesktopNotifier {
 
-    data class Result(val shown: Boolean, val limited: Boolean, val detail: String? = null)
+    data class Result(
+        val shown: Boolean,
+        val limited: Boolean,
+        val detailKey: DesktopMessageKey? = null,
+    )
 
     fun interface TrayNotifier {
         fun show(title: String, body: String): Boolean
@@ -34,8 +39,8 @@ object NativeDesktopNotifier {
                 os.contains("win") -> windowsNotify(title, body)
                 else -> linuxNotify(title, body)
             }
-        } catch (e: Exception) {
-            Result(shown = false, limited = true, detail = e.message)
+        } catch (_: Exception) {
+            Result(shown = false, limited = true, detailKey = DesktopMessageKey.NOTIFIER_GENERIC_FAILURE)
         }
     }
 
@@ -78,9 +83,7 @@ object NativeDesktopNotifier {
                     return Result(
                         shown = tray,
                         limited = true,
-                        detail = "macOS blocked notifications for KeepStraight — " +
-                            "System Settings → Notifications → KeepStraight → Allow. " +
-                            if (tray) "Showed tray banner instead." else directDetail,
+                        detailKey = DesktopMessageKey.NOTIFIER_MAC_BLOCKED,
                     )
                 }
                 val tray = trayNotifier.get()?.show(title, body) == true
@@ -88,27 +91,25 @@ object NativeDesktopNotifier {
                     return Result(
                         shown = true,
                         limited = true,
-                        detail = directDetail.ifBlank { "helper failed; used tray banner" },
+                        detailKey = DesktopMessageKey.NOTIFIER_TRAY_FALLBACK,
                     )
                 }
                 return Result(
                     shown = false,
                     limited = true,
-                    detail = directDetail.ifBlank {
-                        "KeepStraightNotify failed (exit ${direct?.exitCode})"
-                    },
+                    detailKey = DesktopMessageKey.NOTIFIER_MAC_HELPER_FAILED,
                 )
             }
         }
 
         val tray = trayNotifier.get()?.show(title, body) == true
         if (tray) {
-            return Result(shown = true, limited = true, detail = "Notify helper missing; used tray banner")
+            return Result(shown = true, limited = true, detailKey = DesktopMessageKey.NOTIFIER_TRAY_FALLBACK)
         }
         return Result(
             shown = false,
             limited = true,
-            detail = "KeepStraightNotify.app not bundled. Rebuild with desktopApp/scripts/build-mac-notify.sh",
+            detailKey = DesktopMessageKey.NOTIFIER_MAC_HELPER_MISSING,
         )
     }
 
@@ -148,7 +149,11 @@ object NativeDesktopNotifier {
         return Result(
             shown = tray,
             limited = !tray,
-            detail = if (tray) "PowerShell toast failed; used tray banner" else "Windows toast failed",
+            detailKey = if (tray) {
+                DesktopMessageKey.NOTIFIER_TRAY_FALLBACK
+            } else {
+                DesktopMessageKey.NOTIFIER_WINDOWS_FAILED
+            },
         )
     }
 
@@ -164,10 +169,10 @@ object NativeDesktopNotifier {
         return Result(
             shown = tray,
             limited = !tray,
-            detail = if (tray) {
-                "notify-send failed; used tray banner"
+            detailKey = if (tray) {
+                DesktopMessageKey.NOTIFIER_TRAY_FALLBACK
             } else {
-                "notify-send not found — install libnotify"
+                DesktopMessageKey.NOTIFIER_LINUX_NOTIFY_MISSING
             },
         )
     }
