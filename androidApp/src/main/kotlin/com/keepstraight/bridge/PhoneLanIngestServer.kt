@@ -5,11 +5,12 @@ import android.util.Log
 import com.keepstraight.R
 import com.keepstraight.data.PostureHistoryRepository
 import com.keepstraight.data.UserPreferencesRepository
+import com.ghost.serialization.ktor.ghost
 import com.keepstraight.shared.bridge.BridgeProtocolError
 import com.keepstraight.shared.bridge.DesktopLanAckResponse
-import com.keepstraight.shared.bridge.DesktopLanJson
 import com.keepstraight.shared.bridge.DesktopLanPingResponse
 import com.keepstraight.shared.bridge.DesktopLanProtocol
+import com.keepstraight.shared.bridge.DesktopPairRequest
 import com.keepstraight.shared.bridge.DesktopPairResponse
 import com.keepstraight.shared.bridge.DesktopPhoneSettings
 import com.keepstraight.shared.bridge.DesktopSlumpEvent
@@ -20,13 +21,15 @@ import com.keepstraight.shared.model.WatchControlCommand
 import com.keepstraight.sync.PhoneWearSyncManager
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.call
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.request.header
-import io.ktor.server.request.receiveText
+import io.ktor.server.application.install
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.request.receive
+import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
@@ -84,16 +87,16 @@ class PhoneLanIngestServer(
         if (server != null) return
         _localAddresses.value = discoverIpv4Addresses()
         server = embeddedServer(CIO, port = DesktopLanProtocol.DEFAULT_PORT, host = "0.0.0.0") {
+            install(ContentNegotiation) {
+                ghost()
+            }
             routing {
                 get(DesktopLanProtocol.PATH_PING) {
-                    call.respondText(
-                        DesktopLanJson.pingToJson(
-                            DesktopLanPingResponse(
-                                ok = true,
-                                protocolVersion = DesktopLanProtocol.VERSION,
-                            ),
+                    call.respond(
+                        DesktopLanPingResponse(
+                            ok = true,
+                            protocolVersion = DesktopLanProtocol.VERSION,
                         ),
-                        ContentType.Application.Json,
                     )
                 }
                 get(DesktopLanProtocol.PATH_SETTINGS) {
@@ -105,18 +108,18 @@ class PhoneLanIngestServer(
                         )
                         return@get
                     }
-                    val settings = currentPhoneSettings()
-                    call.respondText(
-                        DesktopLanJson.settingsToJson(settings),
-                        ContentType.Application.Json,
-                    )
+                    call.respond(currentPhoneSettings())
                 }
                 post(DesktopLanProtocol.PATH_PAIR) {
-                    val body = call.receiveText()
-                    val req = DesktopLanJson.parsePairRequest(body)
+                    val req = try {
+                        call.receive<DesktopPairRequest>()
+                    } catch (_: Exception) {
+                        call.respondPairFailure(BridgeProtocolError.INVALID_CODE)
+                        return@post
+                    }
                     val expected = _pairingCode.value
                     val now = System.currentTimeMillis()
-                    if (req == null || expected == null) {
+                    if (expected == null) {
                         call.respondPairFailure(BridgeProtocolError.INVALID_CODE)
                         return@post
                     }
@@ -130,28 +133,22 @@ class PhoneLanIngestServer(
                         return@post
                     }
                     if (req.code != expected) {
-                        call.respondText(
-                            DesktopLanJson.pairResponseToJson(
-                                DesktopPairResponse(
-                                    ok = false,
-                                    errorCode = BridgeProtocolError.INVALID_CODE,
-                                ),
-                            ),
-                            ContentType.Application.Json,
+                        call.respond(
                             HttpStatusCode.Unauthorized,
+                            DesktopPairResponse(
+                                ok = false,
+                                errorCode = BridgeProtocolError.INVALID_CODE,
+                            ),
                         )
                         return@post
                     }
                     if (req.protocolVersion != DesktopLanProtocol.VERSION) {
-                        call.respondText(
-                            DesktopLanJson.pairResponseToJson(
-                                DesktopPairResponse(
-                                    ok = false,
-                                    errorCode = BridgeProtocolError.UPDATE_APP,
-                                ),
-                            ),
-                            ContentType.Application.Json,
+                        call.respond(
                             HttpStatusCode.BadRequest,
+                            DesktopPairResponse(
+                                ok = false,
+                                errorCode = BridgeProtocolError.UPDATE_APP,
+                            ),
                         )
                         return@post
                     }
@@ -163,14 +160,11 @@ class PhoneLanIngestServer(
                     pairingAttemptCount = 0
                     _desktopPaired.value = true
                     onPairingStateChanged?.invoke()
-                    call.respondText(
-                        DesktopLanJson.pairResponseToJson(
-                            DesktopPairResponse(
-                                ok = true,
-                                token = token,
-                            ),
+                    call.respond(
+                        DesktopPairResponse(
+                            ok = true,
+                            token = token,
                         ),
-                        ContentType.Application.Json,
                     )
                 }
                 post(DesktopLanProtocol.PATH_EVENT) {
@@ -182,8 +176,16 @@ class PhoneLanIngestServer(
                         )
                         return@post
                     }
-                    val event = DesktopLanJson.parseEvent(call.receiveText())
-                    if (event == null || event.protocolVersion != DesktopLanProtocol.VERSION) {
+                    val event = try {
+                        call.receive<DesktopSlumpEvent>()
+                    } catch (_: Exception) {
+                        call.respondText(
+                            context.getString(R.string.lan_http_bad_request),
+                            status = HttpStatusCode.BadRequest,
+                        )
+                        return@post
+                    }
+                    if (event.protocolVersion != DesktopLanProtocol.VERSION) {
                         call.respondText(
                             context.getString(R.string.lan_http_bad_request),
                             status = HttpStatusCode.BadRequest,
@@ -191,10 +193,7 @@ class PhoneLanIngestServer(
                         return@post
                     }
                     handleEvent(event)
-                    call.respondText(
-                        DesktopLanJson.ackToJson(DesktopLanAckResponse()),
-                        ContentType.Application.Json,
-                    )
+                    call.respond(DesktopLanAckResponse())
                 }
             }
         }.also {
@@ -257,10 +256,9 @@ class PhoneLanIngestServer(
     }
 
     private suspend fun ApplicationCall.respondPairFailure(error: BridgeProtocolError) {
-        respondText(
-            DesktopLanJson.pairResponseToJson(DesktopPairResponse(ok = false, errorCode = error)),
-            ContentType.Application.Json,
+        respond(
             HttpStatusCode.Unauthorized,
+            DesktopPairResponse(ok = false, errorCode = error),
         )
     }
 

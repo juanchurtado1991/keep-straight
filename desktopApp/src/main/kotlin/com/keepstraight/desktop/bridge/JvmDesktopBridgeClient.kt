@@ -1,30 +1,34 @@
 package com.keepstraight.desktop.bridge
 
+import com.ghost.serialization.ktor.ghost
 import com.keepstraight.desktop.presentation.DesktopMessageKey
 import com.keepstraight.desktop.presentation.DesktopPrefsKeys
 import com.keepstraight.shared.bridge.BridgeProtocolError
 import com.keepstraight.shared.bridge.DesktopBridgeClient
-import com.keepstraight.shared.bridge.DesktopLanJson
 import com.keepstraight.shared.bridge.DesktopLanProtocol
 import com.keepstraight.shared.bridge.DesktopPairRequest
+import com.keepstraight.shared.bridge.DesktopPairResponse
 import com.keepstraight.shared.bridge.DesktopPhoneSettings
 import com.keepstraight.shared.bridge.DesktopSlumpEvent
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import java.util.prefs.Preferences
 
 class JvmDesktopBridgeClient(
     private val prefs: Preferences,
 ) : DesktopBridgeClient {
-    private val client = HttpClient(CIO)
+    private val client = HttpClient(CIO) {
+        install(ContentNegotiation) {
+            ghost()
+        }
+    }
 
     private var host: String? = prefs.get(DesktopPrefsKeys.BRIDGE_HOST, null)?.ifBlank { null }
     private var port: Int = prefs.getInt(DesktopPrefsKeys.BRIDGE_PORT, DesktopLanProtocol.DEFAULT_PORT)
@@ -36,22 +40,22 @@ class JvmDesktopBridgeClient(
     override suspend fun pair(host: String, port: Int, code: String): Result<String> {
         return runCatching {
             val response = client.post("http://$host:$port${DesktopLanProtocol.PATH_PAIR}") {
-                contentType(ContentType.Application.Json)
-                setBody(DesktopLanJson.pairRequestToJson(DesktopPairRequest(code = code)))
+                setBody(DesktopPairRequest(code = code))
             }
-            val body = response.bodyAsText()
-            if (!response.status.isSuccess()) {
-                val parsed = DesktopLanJson.parsePairResponse(body)
+            val parsed: DesktopPairResponse = try {
+                response.body()
+            } catch (_: Exception) {
                 throw BridgeClientException(
-                    DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
-                    parsed?.errorCode ?: BridgeProtocolError.PAIRING_FAILED,
-                )
-            }
-            val parsed = DesktopLanJson.parsePairResponse(body)
-                ?: throw BridgeClientException(
                     DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
                     BridgeProtocolError.INVALID_RESPONSE,
                 )
+            }
+            if (!response.status.isSuccess()) {
+                throw BridgeClientException(
+                    DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
+                    parsed.errorCode ?: BridgeProtocolError.PAIRING_FAILED,
+                )
+            }
             if (!parsed.ok) {
                 throw BridgeClientException(
                     DesktopMessageKey.BRIDGE_CLIENT_PAIR_REJECTED,
@@ -82,8 +86,7 @@ class JvmDesktopBridgeClient(
         return runCatching {
             val response = client.post("http://$h:$port${DesktopLanProtocol.PATH_EVENT}") {
                 header(DesktopLanProtocol.HEADER_TOKEN, t)
-                contentType(ContentType.Application.Json)
-                setBody(DesktopLanJson.eventToJson(event))
+                setBody(event)
             }
             if (response.status.value == 401) {
                 throw BridgeClientException(
@@ -122,11 +125,14 @@ class JvmDesktopBridgeClient(
                     BridgeProtocolError.PAIRING_FAILED,
                 )
             }
-            DesktopLanJson.parseSettings(response.bodyAsText())
-                ?: throw BridgeClientException(
+            try {
+                response.body<DesktopPhoneSettings>()
+            } catch (_: Exception) {
+                throw BridgeClientException(
                     DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED,
                     BridgeProtocolError.INVALID_SETTINGS,
                 )
+            }
         }
     }
 

@@ -1,19 +1,20 @@
 package com.keepstraight.desktop.bridge
 
+import com.ghost.serialization.ktor.ghost
 import com.keepstraight.shared.bridge.BridgeProtocolError
-import com.keepstraight.shared.bridge.DesktopLanJson
 import com.keepstraight.shared.bridge.DesktopLanProtocol
 import com.keepstraight.shared.bridge.DesktopPairOffer
 import com.keepstraight.shared.bridge.DesktopPairingQr
 import com.keepstraight.shared.bridge.PhoneHelloRequest
 import com.keepstraight.shared.bridge.PhoneHelloResponse
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
-import io.ktor.server.request.receiveText
-import io.ktor.server.response.respondText
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.request.receive
+import io.ktor.server.response.respond
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,42 +54,48 @@ class DesktopPairAssistServer(
             port = DesktopLanProtocol.PAIR_ASSIST_PORT,
             host = "0.0.0.0",
         ) {
+            install(ContentNegotiation) {
+                ghost()
+            }
             routing {
                 post(DesktopLanProtocol.PATH_PHONE_HELLO) {
-                    val body = call.receiveText()
-                    val req = DesktopLanJson.parsePhoneHello(body)
-                    val expected = expectedNonce
-                    if (req == null || expected == null || req.nonce != expected) {
-                        call.respondText(
-                            DesktopLanJson.phoneHelloResponseToJson(
-                                PhoneHelloResponse(
-                                    ok = false,
-                                    errorCode = BridgeProtocolError.INVALID_QR,
-                                ),
-                            ),
-                            ContentType.Application.Json,
+                    val req = try {
+                        call.receive<PhoneHelloRequest>()
+                    } catch (_: Exception) {
+                        call.respond(
                             HttpStatusCode.Unauthorized,
+                            PhoneHelloResponse(
+                                ok = false,
+                                errorCode = BridgeProtocolError.INVALID_QR,
+                            ),
+                        )
+                        return@post
+                    }
+                    val expected = expectedNonce
+                    if (expected == null || req.nonce != expected) {
+                        call.respond(
+                            HttpStatusCode.Unauthorized,
+                            PhoneHelloResponse(
+                                ok = false,
+                                errorCode = BridgeProtocolError.INVALID_QR,
+                            ),
                         )
                         return@post
                     }
                     if (req.protocolVersion != DesktopLanProtocol.VERSION) {
-                        call.respondText(
-                            DesktopLanJson.phoneHelloResponseToJson(
-                                PhoneHelloResponse(
-                                    ok = false,
-                                    errorCode = BridgeProtocolError.UPDATE_APP,
-                                ),
-                            ),
-                            ContentType.Application.Json,
+                        call.respond(
                             HttpStatusCode.BadRequest,
+                            PhoneHelloResponse(
+                                ok = false,
+                                errorCode = BridgeProtocolError.UPDATE_APP,
+                            ),
                         )
                         return@post
                     }
                     val result = onPhoneHello(req)
-                    call.respondText(
-                        DesktopLanJson.phoneHelloResponseToJson(result),
-                        ContentType.Application.Json,
+                    call.respond(
                         if (result.ok) HttpStatusCode.OK else HttpStatusCode.BadRequest,
+                        result,
                     )
                 }
             }

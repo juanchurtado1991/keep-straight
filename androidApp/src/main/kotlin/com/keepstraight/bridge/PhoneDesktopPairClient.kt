@@ -1,17 +1,17 @@
 package com.keepstraight.bridge
 
 import android.util.Log
-import com.keepstraight.shared.bridge.DesktopLanJson
+import com.ghost.serialization.ktor.ghost
 import com.keepstraight.shared.bridge.DesktopLanProtocol
 import com.keepstraight.shared.bridge.DesktopPairOffer
 import com.keepstraight.shared.bridge.PhoneHelloRequest
+import com.keepstraight.shared.bridge.PhoneHelloResponse
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,7 +19,11 @@ import kotlinx.coroutines.withContext
 class PhoneDesktopPairClient(
     private val lanIngestServer: PhoneLanIngestServer,
 ) {
-    private val client = HttpClient(CIO)
+    private val client = HttpClient(CIO) {
+        install(ContentNegotiation) {
+            ghost()
+        }
+    }
 
     suspend fun pairByScanningDesktopQr(offer: DesktopPairOffer): Result<Unit> =
         withContext(Dispatchers.IO) {
@@ -59,12 +63,13 @@ class PhoneDesktopPairClient(
         val response = client.post(
             "http://$desktopHost:$port${DesktopLanProtocol.PATH_PHONE_HELLO}",
         ) {
-            contentType(ContentType.Application.Json)
-            setBody(DesktopLanJson.phoneHelloToJson(hello))
+            setBody(hello)
         }
-        val body = response.bodyAsText()
-        val parsed = DesktopLanJson.parsePhoneHelloResponse(body)
-            ?: throw PhonePairException(PhonePairError.DESKTOP_REJECTED)
+        val parsed: PhoneHelloResponse = try {
+            response.body()
+        } catch (_: Exception) {
+            throw PhonePairException(PhonePairError.DESKTOP_REJECTED)
+        }
         if (!response.status.isSuccess() || !parsed.ok) {
             throw PhonePairException(phonePairErrorFromProtocol(parsed.errorCode))
         }
