@@ -10,6 +10,7 @@ import com.keepstraight.shared.presentation.phone.CalibrationReducer
 import com.keepstraight.shared.presentation.phone.CalibrationReducerState
 import com.keepstraight.shared.repository.DeviceSyncGateway
 import com.keepstraight.shared.repository.PreferencesRepository
+import com.keepstraight.shared.sync.SyncTiming
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -100,25 +101,24 @@ class CalibrationController(
         }
 
         try {
-            preferencesRepository.setCalibration(goodP, goodR)
-            preferencesRepository.setSlumpReference(slouch.basePitch, slouch.baseRoll)
             val sensitivity = preferencesRepository.sensitivity.first()
-            val syncResult = deviceSyncGateway.sendCalibration(
-                PostureCalibrationConfig(
-                    basePitch = goodP,
-                    baseRoll = goodR,
-                    sensitivity = sensitivity,
-                    slumpDurationThresholdMs = preferencesRepository.slumpDurationThresholdMs.first(),
-                    repeatAlertIntervalMs = preferencesRepository.repeatAlertIntervalMs.first(),
-                    hasSlumpReference = true,
-                    slumpPitch = slouch.basePitch,
-                    slumpRoll = slouch.baseRoll,
-                ),
+            val config = PostureCalibrationConfig(
+                basePitch = goodP,
+                baseRoll = goodR,
+                sensitivity = sensitivity,
+                slumpDurationThresholdMs = preferencesRepository.slumpDurationThresholdMs.first(),
+                repeatAlertIntervalMs = preferencesRepository.repeatAlertIntervalMs.first(),
+                hasSlumpReference = true,
+                slumpPitch = slouch.basePitch,
+                slumpRoll = slouch.baseRoll,
             )
+            val syncResult = deviceSyncGateway.sendCalibration(config)
             if (syncResult.isFailure) {
                 apply(CalibrationReduceAction.PersistFailed(CalibrationError.SEND_FAILED))
                 return
             }
+            preferencesRepository.setCalibration(goodP, goodR)
+            preferencesRepository.setSlumpReference(slouch.basePitch, slouch.baseRoll)
             apply(CalibrationReduceAction.PersistSucceeded)
         } catch (_: Exception) {
             apply(CalibrationReduceAction.PersistFailed(CalibrationError.SAVE_FAILED))
@@ -128,6 +128,6 @@ class CalibrationController(
     private companion object {
         const val COUNTDOWN_STEP_MS = 1_000L
         const val SEND_TIMEOUT_MS = 8_000L
-        const val CAPTURE_TIMEOUT_MS = 20_000L
+        const val CAPTURE_TIMEOUT_MS = SyncTiming.CALIBRATION_CAPTURE_TIMEOUT_MS
     }
 }

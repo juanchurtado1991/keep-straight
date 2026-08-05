@@ -10,6 +10,7 @@ import com.keepstraight.shared.model.WatchControlMessage
 import com.keepstraight.shared.platform.DoNotDisturbChecker
 import com.keepstraight.shared.platform.currentTimeMillis
 import com.keepstraight.shared.presentation.MonitoringState
+import com.keepstraight.shared.sync.SyncTiming
 import com.keepstraight.shared.util.ImuMath
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -302,6 +303,6 @@ class PostureMonitoringEngine(
 }
 
 private const val CALIBRATION_CAPTURE_MS = 3_000L
-private const val CALIBRATION_GIVE_UP_MS = 12_000L
+private const val CALIBRATION_GIVE_UP_MS = SyncTiming.CALIBRATION_CAPTURE_TIMEOUT_MS
 private const val MIN_CALIBRATION_SAMPLES = 4
 
