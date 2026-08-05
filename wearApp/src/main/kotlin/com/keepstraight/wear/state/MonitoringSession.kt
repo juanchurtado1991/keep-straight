@@ -146,7 +146,9 @@ class MonitoringSession(context: Context) {
         if (engine.isCalibrating.value) {
             Log.i(TAG, "Already calibrating; updating reply node=$phoneNodeId")
             calibrationReplyNodeId = phoneNodeId
-            calibrationSampler.start()
+            if (!PostureMonitoringService.isRunning()) {
+                calibrationSampler.start()
+            }
             return
         }
         Log.i(TAG, "Calibration requested from phone node=$phoneNodeId")
@@ -156,7 +158,9 @@ class MonitoringSession(context: Context) {
             .onFailure { Log.w(TAG, "FGS start failed; continuing with direct sampler", it) }
 
         engine.handleControlMessage(WatchControlMessage(WatchControlCommand.CALIBRATE_CAPTURE))
-        calibrationSampler.start()
+        if (!PostureMonitoringService.isRunning()) {
+            calibrationSampler.start()
+        }
     }
 
     fun startMonitoring() = engine.startMonitoring()
@@ -173,6 +177,18 @@ class MonitoringSession(context: Context) {
 
     fun handleConnectionRetry() {
         PostureMonitoringService.handleRetryAlarm(appContext)
+    }
+
+    /** Drop FGS-owned callbacks and restore desktop-alert dispatch. */
+    fun detachForegroundService() {
+        onPostureEvent = null
+        onSyncRequested = null
+        onConnectionRetry = null
+        onConnectionRetryExhausted = null
+        onEnsureSensors = null
+        onStateChanged = null
+        val alertDispatcher = AlertDispatcher(appContext)
+        engine.onAlert = { alertDispatcher.dispatchAlert(engine.getAlertPreferences()) }
     }
 
     fun processSample(

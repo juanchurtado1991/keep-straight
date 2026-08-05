@@ -30,6 +30,7 @@ import com.keepstraight.shared.sync.SyncPaths
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class PostureMonitoringService : Service(), SensorEventListener {
@@ -128,8 +129,14 @@ class PostureMonitoringService : Service(), SensorEventListener {
         unregisterSensors()
         offBodyDetector.unregister()
         connectionRetryManager.cancelRetryCycle()
+        clearSessionCallbacks()
+        scope.cancel()
         instance = null
         super.onDestroy()
+    }
+
+    private fun clearSessionCallbacks() {
+        (application as? KeepStraightWearApp)?.monitoringSession?.detachForegroundService()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -292,6 +299,8 @@ class PostureMonitoringService : Service(), SensorEventListener {
         private const val SAMPLE_INTERVAL_MS = 500L
 
         private var instance: PostureMonitoringService? = null
+
+        fun isRunning(): Boolean = instance != null
 
         const val PREFS_NAME = "keepstraight_wear"
         const val KEY_MONITORING_ENABLED = "monitoring_enabled"
