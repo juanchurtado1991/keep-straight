@@ -24,6 +24,11 @@ dependencies {
     implementation(libs.ktor.server.cio)
     implementation(libs.zxing.core)
     implementation(libs.jmdns)
+    implementation(libs.koin.core)
+    implementation(libs.koin.compose)
+    implementation(libs.voyager.navigator)
+    implementation(libs.voyager.transitions)
+    implementation(libs.voyager.koin)
 }
 
 compose.desktop {

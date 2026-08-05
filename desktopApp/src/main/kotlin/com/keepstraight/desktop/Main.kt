@@ -11,6 +11,7 @@ import androidx.compose.ui.window.rememberWindowState
 import com.keepstraight.desktop.alert.NativeDesktopNotifier
 import com.keepstraight.desktop.generated.resources.Res
 import com.keepstraight.desktop.generated.resources.icon
+import com.keepstraight.desktop.di.desktopAppModule
 import com.keepstraight.desktop.ui.DesktopApp
 import com.keepstraight.desktop.ui.KeepStraightDesktopTheme
 import com.keepstraight.desktop.presentation.DesktopMessageKey
@@ -20,6 +21,8 @@ import com.keepstraight.desktop.ui.i18n.DesktopStrings
 import com.keepstraight.desktop.ui.wizard.FirstRunWizard
 import com.keepstraight.shared.vision.WebcamBootstrap
 import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.KoinApplication
+import org.koin.compose.koinInject
 import java.awt.SystemTray
 import java.util.prefs.Preferences
 
@@ -27,6 +30,12 @@ fun main() {
     WebcamBootstrap.ensureInitialized()
     application {
         val prefs = remember { Preferences.userRoot().node(DesktopPrefsKeys.ROOT) }
+
+        KoinApplication(application = { modules(desktopAppModule(prefs)) }) {
+        val controller = koinInject<DesktopSessionController>()
+        val windowState = rememberWindowState(placement = WindowPlacement.Maximized)
+        val appIcon = painterResource(Res.drawable.icon)
+
         var consentAccepted by remember {
             mutableStateOf(prefs.getBoolean(DesktopPrefsKeys.CAMERA_CONSENT_ACCEPTED, false))
         }
@@ -55,10 +64,6 @@ fun main() {
                 },
             )
         }
-
-        val controller = remember { DesktopSessionController(prefs) }
-        val windowState = rememberWindowState(placement = WindowPlacement.Maximized)
-        val appIcon = painterResource(Res.drawable.icon)
 
         val quitApp: () -> Unit = {
             NativeDesktopNotifier.bindTray(null)
@@ -126,12 +131,12 @@ fun main() {
                     )
                 } else {
                     DesktopApp(
-                        controller = controller,
                         onQuit = quitApp,
                         onHideToTray = hideToTray,
                     )
                 }
             }
+        }
         }
     }
 }

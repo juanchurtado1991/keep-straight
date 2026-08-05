@@ -5,51 +5,41 @@ import com.keepstraight.bridge.PhoneLanIngestServer
 import com.keepstraight.data.PostureHistoryRepository
 import com.keepstraight.data.UserPreferencesRepository
 import com.keepstraight.data.local.PostureDatabase
+import com.keepstraight.di.startKeepStraightKoin
 import com.keepstraight.notifications.PostureNotificationManager
 import com.keepstraight.sync.PhoneWearSyncManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.getKoin
 
 class KeepStraightApp : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    lateinit var database: PostureDatabase
-        private set
+    val database: PostureDatabase
+        get() = getKoin().get()
 
-    lateinit var postureHistoryRepository: PostureHistoryRepository
-        private set
+    val postureHistoryRepository: PostureHistoryRepository
+        get() = getKoin().get()
 
-    lateinit var userPreferencesRepository: UserPreferencesRepository
-        private set
+    val userPreferencesRepository: UserPreferencesRepository
+        get() = getKoin().get()
 
-    lateinit var syncManager: PhoneWearSyncManager
-        private set
+    val syncManager: PhoneWearSyncManager
+        get() = getKoin().get()
 
-    lateinit var notificationManager: PostureNotificationManager
-        private set
+    val notificationManager: PostureNotificationManager
+        get() = getKoin().get()
 
-    lateinit var lanIngestServer: PhoneLanIngestServer
-        private set
+    val lanIngestServer: PhoneLanIngestServer
+        get() = getKoin().get()
 
     override fun onCreate() {
         super.onCreate()
-        database = PostureDatabase.create(this)
-        postureHistoryRepository = PostureHistoryRepository(database)
-        userPreferencesRepository = UserPreferencesRepository(this)
-        syncManager = PhoneWearSyncManager(this, userPreferencesRepository)
-        notificationManager = PostureNotificationManager(this)
-        lanIngestServer = PhoneLanIngestServer(
-            context = this,
-            historyRepository = postureHistoryRepository,
-            syncManager = syncManager,
-            preferencesRepository = userPreferencesRepository,
-        )
-        // PhoneLanBridgeService (FGS) starts the Ktor server from MainActivity / boot / pair.
+        startKeepStraightKoin(this)
         appScope.launch {
-            // Old posture_events lack seated/good hours — inject stable mock into new table.
             postureHistoryRepository.ensureWorkHourStatsSeeded()
         }
     }
