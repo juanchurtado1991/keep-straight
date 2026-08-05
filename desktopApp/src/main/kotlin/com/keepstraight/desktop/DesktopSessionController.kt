@@ -129,11 +129,11 @@ class DesktopSessionController(
                     result.shown && !result.limited -> UserMessage(DesktopMessageKey.TEST_NOTIFICATION_SENT)
                     result.shown -> UserMessage(
                         DesktopMessageKey.TEST_NOTIFICATION_LIMITED,
-                        listOf(result.detail ?: DesktopMessageKey.TEST_NOTIFICATION_LIMITED.name),
+                        listOf(result.detail.orEmpty()),
                     )
                     else -> UserMessage(
                         DesktopMessageKey.TEST_NOTIFICATION_FAILED,
-                        listOf(result.detail ?: DesktopMessageKey.TEST_NOTIFICATION_FAILED.name),
+                        listOf(result.detail.orEmpty()),
                     )
                 },
             )
