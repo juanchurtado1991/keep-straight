@@ -29,6 +29,7 @@ import com.keepstraight.ui.AlertSettingsScreen
 import com.keepstraight.ui.CalibratePostureScreen
 import com.keepstraight.ui.ConnectionFlowScreen
 import com.keepstraight.ui.DashboardScreen
+import com.keepstraight.presentation.pairing.DesktopPairingViewModel
 import com.keepstraight.ui.DesktopQrScanScreen
 import com.keepstraight.ui.HistoryScreen
 import com.keepstraight.ui.SensitivityScreen
@@ -225,7 +226,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(Routes.DESKTOP_QR) {
+                        val desktopPairingViewModel: DesktopPairingViewModel = viewModel()
                         DesktopQrScanScreen(
+                            viewModel = desktopPairingViewModel,
                             onBack = { navController.popBackStack() },
                             onPaired = {
                                 navController.popBackStack()

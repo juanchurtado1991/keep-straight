@@ -26,7 +26,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,35 +35,36 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.MultiFormatReader
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
-import com.keepstraight.KeepStraightApp
 import com.keepstraight.R
-import com.keepstraight.bridge.PhoneDesktopPairClient
 import com.keepstraight.bridge.PhoneLanBridgeService
-import com.keepstraight.shared.bridge.DesktopPairingQr
+import com.keepstraight.presentation.pairing.DesktopPairingPhase
+import com.keepstraight.presentation.pairing.DesktopPairingViewModel
 import com.keepstraight.ui.components.KeepStraightTopBar
 import com.keepstraight.util.SystemIntentsHelper
-import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 
 @Composable
 fun DesktopQrScanScreen(
+    viewModel: DesktopPairingViewModel,
     onBack: () -> Unit,
     onPaired: () -> Unit,
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as KeepStraightApp
-    val scope = rememberCoroutineScope()
-    var status by remember { mutableStateOf<String?>(null) }
-    var pairing by remember { mutableStateOf(false) }
-    val handled = remember { AtomicBoolean(false) }
-    val pairClient = remember { PhoneDesktopPairClient(app.lanIngestServer) }
+    val pairingState by viewModel.state.collectAsStateWithLifecycle()
+
     LaunchedEffect(Unit) {
         PhoneLanBridgeService.start(context)
+    }
+
+    LaunchedEffect(pairingState.phase) {
+        if (pairingState.phase == DesktopPairingPhase.SUCCESS) {
+            onPaired()
+        }
     }
 
     var hasCameraPermission by remember {
@@ -77,7 +77,6 @@ fun DesktopQrScanScreen(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         hasCameraPermission = granted
-        if (!granted) status = context.getString(R.string.desktop_qr_camera_denied)
     }
 
     LaunchedEffect(Unit) {
@@ -86,33 +85,13 @@ fun DesktopQrScanScreen(
         }
     }
 
-    DisposableEffect(Unit) {
-        onDispose { pairClient.close() }
-    }
-
-    fun onQrPayload(raw: String) {
-        if (!handled.compareAndSet(false, true)) return
-        val offer = DesktopPairingQr.parse(raw)
-        if (offer == null) {
-            handled.set(false)
-            return
-        }
-        pairing = true
-        status = context.getString(R.string.desktop_qr_pairing)
-        scope.launch {
-            val result = pairClient.pairByScanningDesktopQr(offer)
-            pairing = false
-            result.fold(
-                onSuccess = {
-                    status = context.getString(R.string.desktop_qr_success)
-                    onPaired()
-                },
-                onFailure = { err ->
-                    handled.set(false)
-                    status = err.message ?: context.getString(R.string.desktop_qr_failed)
-                },
-            )
-        }
+    val statusText = when (pairingState.phase) {
+        DesktopPairingPhase.PAIRING -> stringResource(R.string.desktop_qr_pairing)
+        DesktopPairingPhase.SUCCESS -> stringResource(R.string.desktop_qr_success)
+        DesktopPairingPhase.FAILED ->
+            pairingState.errorMessage ?: stringResource(R.string.desktop_qr_failed)
+        DesktopPairingPhase.INVALID_QR -> stringResource(R.string.desktop_qr_failed)
+        DesktopPairingPhase.IDLE -> null
     }
 
     Scaffold(
@@ -131,11 +110,10 @@ fun DesktopQrScanScreen(
             if (hasCameraPermission) {
                 CameraQrPreview(
                     modifier = Modifier.fillMaxSize(),
-                    enabled = !pairing,
-                    onQr = ::onQrPayload,
+                    enabled = pairingState.phase != DesktopPairingPhase.PAIRING,
+                    onQr = viewModel::onQrPayload,
                 )
             } else {
-                // A one-shot request that got denied would otherwise leave a dead screen.
                 Column(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -163,7 +141,7 @@ fun DesktopQrScanScreen(
             }
             if (hasCameraPermission) {
                 Text(
-                    text = status ?: stringResource(R.string.desktop_qr_hint),
+                    text = statusText ?: stringResource(R.string.desktop_qr_hint),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
@@ -171,7 +149,7 @@ fun DesktopQrScanScreen(
                         .padding(24.dp),
                 )
             }
-            if (pairing) {
+            if (pairingState.phase == DesktopPairingPhase.PAIRING) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
         }
