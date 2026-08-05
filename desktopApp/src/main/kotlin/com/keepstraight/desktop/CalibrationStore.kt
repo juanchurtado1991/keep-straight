@@ -1,5 +1,7 @@
 package com.keepstraight.desktop
 
+import com.keepstraight.desktop.presentation.CalibrationPrefsKeys
+import com.keepstraight.desktop.presentation.DesktopPrefsKeys
 import com.keepstraight.shared.domain.LandmarkCalibration
 import com.keepstraight.shared.domain.LandmarkPostureFeatures
 import com.keepstraight.shared.model.SensitivityLevel
@@ -7,33 +9,33 @@ import java.util.prefs.Preferences
 
 object CalibrationStore {
     fun load(prefs: Preferences): LandmarkCalibration? {
-        if (!prefs.getBoolean("cal_valid", false)) return null
+        if (!prefs.getBoolean(CalibrationPrefsKeys.VALID, false)) return null
         return runCatching {
             LandmarkCalibration(
-                erect = features("erect", prefs),
-                slumped = features("slump", prefs),
+                erect = features(CalibrationPrefsKeys.PREFIX_ERECT, prefs),
+                slumped = features(CalibrationPrefsKeys.PREFIX_SLUMP, prefs),
                 sensitivity = SensitivityLevel.valueOf(
-                    prefs.get("sensitivity", SensitivityLevel.NORMAL.name),
+                    prefs.get(DesktopPrefsKeys.SENSITIVITY, SensitivityLevel.NORMAL.name),
                 ),
-                slumpDurationThresholdMs = prefs.getLong("slump_duration_ms", 30_000L),
-                repeatAlertIntervalMs = prefs.getLong("repeat_alert_ms", 5_000L),
-                calibratedAtMs = prefs.getLong("cal_at", 0L),
+                slumpDurationThresholdMs = prefs.getLong(DesktopPrefsKeys.SLUMP_DURATION_MS, 30_000L),
+                repeatAlertIntervalMs = prefs.getLong(DesktopPrefsKeys.REPEAT_ALERT_MS, 5_000L),
+                calibratedAtMs = prefs.getLong(CalibrationPrefsKeys.AT_MS, 0L),
             )
         }.getOrNull()
     }
 
     fun save(prefs: Preferences, cal: LandmarkCalibration) {
-        prefs.putBoolean("cal_valid", true)
-        writeFeatures("erect", cal.erect, prefs)
-        writeFeatures("slump", cal.slumped, prefs)
-        prefs.put("sensitivity", cal.sensitivity.name)
-        prefs.putLong("slump_duration_ms", cal.slumpDurationThresholdMs)
-        prefs.putLong("repeat_alert_ms", cal.repeatAlertIntervalMs)
-        prefs.putLong("cal_at", cal.calibratedAtMs)
+        prefs.putBoolean(CalibrationPrefsKeys.VALID, true)
+        writeFeatures(CalibrationPrefsKeys.PREFIX_ERECT, cal.erect, prefs)
+        writeFeatures(CalibrationPrefsKeys.PREFIX_SLUMP, cal.slumped, prefs)
+        prefs.put(DesktopPrefsKeys.SENSITIVITY, cal.sensitivity.name)
+        prefs.putLong(DesktopPrefsKeys.SLUMP_DURATION_MS, cal.slumpDurationThresholdMs)
+        prefs.putLong(DesktopPrefsKeys.REPEAT_ALERT_MS, cal.repeatAlertIntervalMs)
+        prefs.putLong(CalibrationPrefsKeys.AT_MS, cal.calibratedAtMs)
     }
 
     fun clear(prefs: Preferences) {
-        prefs.putBoolean("cal_valid", false)
+        prefs.putBoolean(CalibrationPrefsKeys.VALID, false)
     }
 
     private fun features(prefix: String, prefs: Preferences) = LandmarkPostureFeatures(

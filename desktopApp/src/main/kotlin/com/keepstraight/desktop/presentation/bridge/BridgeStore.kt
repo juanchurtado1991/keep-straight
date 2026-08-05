@@ -5,7 +5,6 @@ import com.keepstraight.desktop.CalibrationStore
 import com.keepstraight.desktop.bridge.DesktopPairAssistServer
 import com.keepstraight.desktop.bridge.JvmDesktopBridgeClient
 import com.keepstraight.desktop.ui.QrCodeBitmap
-import com.keepstraight.desktop.bridge.BridgeClientException
 import com.keepstraight.desktop.presentation.BridgeErrorMapper
 import com.keepstraight.desktop.presentation.DesktopMessageKey
 import com.keepstraight.desktop.presentation.DesktopPrefsKeys
@@ -307,16 +306,7 @@ class BridgeStore(
         }
     }
 
-    private fun bridgeFailureMessage(err: Throwable?): UserMessage = when (err) {
-        is BridgeClientException -> when (err.messageKey) {
-            DesktopMessageKey.BRIDGE_CLIENT_PAIR_FAILED -> UserMessage(
-                err.messageKey,
-                listOf(err.message.orEmpty()),
-            )
-            else -> UserMessage(err.messageKey, override = err.message)
-        }
-        else -> BridgeErrorMapper.userMessage(err?.message)
-    }
+    private fun bridgeFailureMessage(err: Throwable?): UserMessage = BridgeErrorMapper.userMessage(err)
 
     private fun userMessageText(message: UserMessage): String =
         message.override ?: DesktopMessageJvm.text(message.key, *message.args.toTypedArray())
