@@ -28,6 +28,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -41,6 +43,7 @@ class WearInboundHandler(
     DataClient.OnDataChangedListener {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val flushMutex = Mutex()
     private val recentDeliveryKeys = ArrayDeque<String>()
     private val deliveryLock = Any()
     private var lastCalibrateRequestAt = 0L
@@ -238,14 +241,37 @@ class WearInboundHandler(
         }.onFailure { Log.w(TAG, "WakeLock failed ($tag)", it) }
     }
 
+    fun retryPendingSyncFromAlarm() {
+        scope.launch { flushPendingEventsToPhone() }
+    }
+
     private suspend fun flushPendingEvents(nodeId: String) {
-        val batchBytes = app.pendingSyncQueue.encodeBatchBytes() ?: return
-        val sender = WearMessageSender(app)
-        val sent = sender.sendToNode(nodeId, SyncPaths.EVENTS_BATCH, batchBytes)
-        if (sent) {
-            app.pendingSyncQueue.clear()
-            PostureMonitoringService.cancelRetryCycle(app)
-            app.monitoringSession.setPhoneRetryActive(false)
+        flushMutex.withLock {
+            val batch = app.pendingSyncQueue.takeBatch() ?: return
+            val batchBytes = Ghost.encodeToBytes(batch)
+            val sender = WearMessageSender(app)
+            val sent = sender.sendToNode(nodeId, SyncPaths.EVENTS_BATCH, batchBytes)
+            if (sent) {
+                PostureMonitoringService.cancelRetryCycle(app)
+                app.monitoringSession.setPhoneRetryActive(false)
+            } else {
+                app.pendingSyncQueue.reenqueue(batch)
+            }
+        }
+    }
+
+    private suspend fun flushPendingEventsToPhone() {
+        flushMutex.withLock {
+            val batch = app.pendingSyncQueue.takeBatch() ?: return
+            val batchBytes = Ghost.encodeToBytes(batch)
+            val sender = WearMessageSender(app)
+            val sent = sender.sendToPhone(SyncPaths.EVENTS_BATCH, batchBytes)
+            if (sent) {
+                PostureMonitoringService.cancelRetryCycle(app)
+                app.monitoringSession.setPhoneRetryActive(false)
+            } else {
+                app.pendingSyncQueue.reenqueue(batch)
+            }
         }
     }
 
