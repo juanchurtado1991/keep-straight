@@ -12,8 +12,20 @@ import kotlin.test.assertTrue
 class DesktopLanWireTest {
     @Test
     fun ping_roundTrip() {
-        val ping = DesktopLanPingResponse(ok = true, protocolVersion = DesktopLanProtocol.VERSION)
+        val ping = DesktopLanPingResponse(
+            ok = true,
+            protocolVersion = DesktopLanProtocol.VERSION,
+            bridgeLinked = true,
+        )
         assertEquals(ping, roundTrip(ping))
+    }
+
+    @Test
+    fun pairingQr_rejectsWrongProtocolVersion() {
+        val raw = DesktopPairingQr.encode(
+            DesktopPairOffer(hosts = listOf("192.168.1.2"), port = 8743, nonce = "n1"),
+        ).replace("v=1", "v=99")
+        assertNull(DesktopPairingQr.parse(raw))
     }
 
     @Test
