@@ -35,6 +35,10 @@ fun CalibratePostureScreen(
     val isConnected by viewModel.isConnected.collectAsState()
     val calibrationState by viewModel.state.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.refreshConnectionStatus()
+    }
+
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {

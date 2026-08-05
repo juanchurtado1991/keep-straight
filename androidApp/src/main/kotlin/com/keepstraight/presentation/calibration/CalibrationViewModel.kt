@@ -10,6 +10,7 @@ import com.keepstraight.shared.presentation.phone.CalibrationEffect
 import com.keepstraight.shared.presentation.phone.CalibrationEvent
 import com.keepstraight.shared.repository.DeviceSyncGateway
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -76,5 +77,9 @@ class CalibrationViewModel(
         viewModelScope.launch {
             _effects.emit(CalibrationEffect.NavigateBack)
         }
+    }
+
+    fun refreshConnectionStatus() {
+        viewModelScope.launch { refreshConnection() }
     }
 }
