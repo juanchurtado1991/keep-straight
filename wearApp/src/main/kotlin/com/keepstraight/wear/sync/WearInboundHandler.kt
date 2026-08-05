@@ -172,7 +172,6 @@ class WearInboundHandler(
                 }
 
                 SyncPaths.SYNC_ACK -> {
-                    app.pendingSyncQueue.clear()
                     PostureMonitoringService.cancelRetryCycle(app)
                     session.setPhoneRetryActive(false)
                 }
