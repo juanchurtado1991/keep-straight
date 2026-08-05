@@ -35,7 +35,7 @@ data class PhoneHelloRequest(
 
 data class PhoneHelloResponse(
     val ok: Boolean,
-    val message: String = "",
+    val errorCode: BridgeProtocolError? = null,
 )
 
 /**
@@ -101,7 +101,7 @@ data class DesktopPairRequest(
 data class DesktopPairResponse(
     val ok: Boolean,
     val token: String = "",
-    val message: String = "",
+    val errorCode: BridgeProtocolError? = null,
 )
 
 data class DesktopPhoneSettings(
@@ -142,15 +142,17 @@ object DesktopLanJson {
         )
     }
 
-    fun pairResponseToJson(res: DesktopPairResponse): String =
-        """{"ok":${res.ok},"token":"${res.token}","message":"${res.message.replace("\"", "'")}"}"""
+    fun pairResponseToJson(res: DesktopPairResponse): String {
+        val codeJson = res.errorCode?.let { ""","errorCode":"${it.name}"""" }.orEmpty()
+        return """{"ok":${res.ok},"token":"${res.token}"$codeJson}"""
+    }
 
     fun parsePairResponse(json: String): DesktopPairResponse? {
         val ok = json.contains("\"ok\":true")
         return DesktopPairResponse(
             ok = ok,
             token = stringField(json, "token").orEmpty(),
-            message = stringField(json, "message").orEmpty(),
+            errorCode = parseErrorCode(json),
         )
     }
 
@@ -187,15 +189,21 @@ object DesktopLanJson {
         )
     }
 
-    fun phoneHelloResponseToJson(res: PhoneHelloResponse): String =
-        """{"ok":${res.ok},"message":"${res.message.replace("\"", "'")}"}"""
-
-    fun parsePhoneHelloResponse(json: String): PhoneHelloResponse {
-        return PhoneHelloResponse(
-            ok = json.contains("\"ok\":true"),
-            message = stringField(json, "message").orEmpty(),
-        )
+    fun phoneHelloResponseToJson(res: PhoneHelloResponse): String {
+        val codeJson = res.errorCode?.let { ""","errorCode":"${it.name}"""" }.orEmpty()
+        return """{"ok":${res.ok}$codeJson}"""
     }
+
+    fun parsePhoneHelloResponse(json: String): PhoneHelloResponse =
+        PhoneHelloResponse(
+            ok = json.contains("\"ok\":true"),
+            errorCode = parseErrorCode(json),
+        )
+
+    private fun parseErrorCode(json: String): BridgeProtocolError? =
+        stringField(json, "errorCode")?.let { raw ->
+            runCatching { BridgeProtocolError.valueOf(raw) }.getOrNull()
+        }
 
     private fun stringArrayField(json: String, key: String): List<String> {
         val regex = Regex("\"$key\"\\s*:\\s*\\[(.*?)]")
