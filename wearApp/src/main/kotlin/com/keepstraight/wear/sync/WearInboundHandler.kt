@@ -202,8 +202,11 @@ class WearInboundHandler(
         // ALGORITHM_OFF / NOT_WORN apply to the wrist IMU path. Desktop owns detection, so the
         // watch must still buzz when the algorithm was never started (default after install).
         val state = app.monitoringSession.monitoringState.value
-        if (state == MonitoringState.ALERTS_PAUSED) {
-            Log.i(TAG, "Skipping desktop alert — alerts paused from phone")
+        if (state == MonitoringState.ALERTS_PAUSED ||
+            state == MonitoringState.NOT_WORN ||
+            state == MonitoringState.PHONE_DISCONNECTED_PAUSED
+        ) {
+            Log.i(TAG, "Skipping desktop alert — state=$state")
             return
         }
         val now = System.currentTimeMillis()
