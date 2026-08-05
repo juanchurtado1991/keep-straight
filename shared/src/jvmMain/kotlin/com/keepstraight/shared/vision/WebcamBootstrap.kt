@@ -2,6 +2,7 @@ package com.keepstraight.shared.vision
 
 import com.github.eduramiba.webcamcapture.drivers.NativeDriver
 import com.github.sarxos.webcam.Webcam
+import com.keepstraight.shared.platform.JvmOsSignals
 
 /**
  * Installs a native webcam driver before any enumeration:
@@ -26,32 +27,26 @@ object WebcamBootstrap {
             if (initialized) return
             activeDriverLabel = installNativeDriver()
             initialized = true
-            System.err.println("KeepStraight: webcam driver = $activeDriverLabel (${osFamily()} / ${arch()})")
+            System.err.println(
+                "KeepStraight: webcam driver = $activeDriverLabel (${osFamily()} / ${JvmOsSignals.archLower()})",
+            )
         }
     }
 
     fun activeDriver(): String = activeDriverLabel
 
-    fun osFamily(): OsFamily {
-        val os = System.getProperty("os.name").orEmpty().lowercase()
-        return when {
-            os.contains("mac") || os.contains("darwin") -> OsFamily.MAC
-            os.contains("win") -> OsFamily.WINDOWS
-            os.contains("linux") -> OsFamily.LINUX
-            else -> OsFamily.OTHER
-        }
+    fun osFamily(): OsFamily = when {
+        JvmOsSignals.isMac() -> OsFamily.MAC
+        JvmOsSignals.isWindows() -> OsFamily.WINDOWS
+        JvmOsSignals.isLinux() -> OsFamily.LINUX
+        else -> OsFamily.OTHER
     }
 
     fun isMac(): Boolean = osFamily() == OsFamily.MAC
     fun isWindows(): Boolean = osFamily() == OsFamily.WINDOWS
     fun isLinux(): Boolean = osFamily() == OsFamily.LINUX
 
-    /** Native driver 1.3.1 ships no linux-aarch64 webcam binary. */
-    fun isUnsupportedWebcamArch(): Boolean =
-        isLinux() && arch().let { it.contains("aarch64") || it.contains("arm64") }
-
-    private fun arch(): String =
-        System.getProperty("os.arch").orEmpty().lowercase()
+    fun isUnsupportedWebcamArch(): Boolean = JvmOsSignals.isLinuxAarch64()
 
     private fun installNativeDriver(): String {
         if (isUnsupportedWebcamArch()) {

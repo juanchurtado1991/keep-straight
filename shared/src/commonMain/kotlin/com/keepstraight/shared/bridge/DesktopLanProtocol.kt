@@ -148,7 +148,7 @@ object DesktopLanJson {
     }
 
     fun parsePairResponse(json: String): DesktopPairResponse? {
-        val ok = json.contains("\"ok\":true")
+        val ok = DesktopLanJsonWire.isOkTrue(json)
         return DesktopPairResponse(
             ok = ok,
             token = stringField(json, "token").orEmpty(),
@@ -196,7 +196,7 @@ object DesktopLanJson {
 
     fun parsePhoneHelloResponse(json: String): PhoneHelloResponse =
         PhoneHelloResponse(
-            ok = json.contains("\"ok\":true"),
+            ok = DesktopLanJsonWire.isOkTrue(json),
             errorCode = parseErrorCode(json),
         )
 
