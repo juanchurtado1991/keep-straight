@@ -50,14 +50,6 @@ class PhoneWatchSettingsUseCase(
         deviceSyncGateway.sendPreferences(sensitivity, preferences)
     }
 
-    suspend fun reconnectWatch() {
-        deviceSyncGateway.reconnect()
-    }
-
-    suspend fun requestSync() {
-        deviceSyncGateway.requestSync()
-    }
-
     suspend fun dismissBatteryOptimizationBanner() {
         preferencesRepository.setBatteryOptimizationDismissed(true)
     }

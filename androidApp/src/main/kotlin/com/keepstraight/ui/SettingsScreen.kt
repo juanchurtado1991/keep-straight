@@ -38,6 +38,7 @@ fun SettingsScreen(
     onSensitivity: () -> Unit,
     onChangePairedWatch: () -> Unit,
     onScanDesktopQr: () -> Unit,
+    onOpenConnection: () -> Unit,
     onBack: () -> Unit,
 ) {
     val pairedWatchId by viewModel.pairedWatchId.collectAsState()
@@ -70,6 +71,14 @@ fun SettingsScreen(
             }
 
             val watchPaired = pairedWatchId != null
+            if (watchPaired) {
+                PhoneCard {
+                    SettingsLink(
+                        label = stringResource(R.string.connection_flow_title),
+                        onClick = onOpenConnection,
+                    )
+                }
+            }
             PhoneCard {
                 SettingsToggleRow(
                     label = stringResource(R.string.dashboard_monitoring),

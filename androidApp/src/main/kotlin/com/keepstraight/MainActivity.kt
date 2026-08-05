@@ -214,6 +214,7 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate(AppRoutes.CHANGE_WATCH)
                             },
                             onScanDesktopQr = { navController.navigate(AppRoutes.DESKTOP_QR) },
+                            onOpenConnection = { openConnection(autoStart = false) },
                             onBack = { navController.popBackStack() },
                         )
                     }

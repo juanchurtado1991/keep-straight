@@ -73,10 +73,6 @@ class SettingsViewModel(
         viewModelScope.launch { pairingUseCase.unpairDevice() }
     }
 
-    fun requestSync() {
-        viewModelScope.launch { settingsUseCase.requestSync() }
-    }
-
     fun dismissBatteryOptimizationBanner() {
         viewModelScope.launch { settingsUseCase.dismissBatteryOptimizationBanner() }
     }
