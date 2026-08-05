@@ -14,6 +14,8 @@ import com.keepstraight.shared.model.PostureEvent
 import com.keepstraight.shared.model.PostureEventType
 import com.keepstraight.shared.model.WatchControlCommand
 import com.keepstraight.sync.PhoneWearSyncManager
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.application.call
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.cio.CIO
@@ -28,11 +30,12 @@ import io.ktor.server.routing.routing
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.net.NetworkInterface
 import java.util.UUID
 import kotlin.random.Random
@@ -47,15 +50,23 @@ class PhoneLanIngestServer(
     private val syncManager: PhoneWearSyncManager,
     private val preferencesRepository: UserPreferencesRepository,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var server: EmbeddedServer<*, *>? = null
 
     private val prefs = context.getSharedPreferences("desktop_bridge", Context.MODE_PRIVATE)
 
+    @Volatile
+    private var authToken: String? = prefs.getString("token", null)
+
+    private val pairAttemptLock = Any()
+    private var pairingCodeExpiresAtMs = 0L
+    private var pairingAttemptCount = 0
+    private var pairingAttemptWindowStartMs = 0L
+
     private val _pairingCode = MutableStateFlow<String?>(null)
     val pairingCode: StateFlow<String?> = _pairingCode.asStateFlow()
 
-    private val _desktopPaired = MutableStateFlow(!prefs.getString("token", null).isNullOrBlank())
+    private val _desktopPaired = MutableStateFlow(!authToken.isNullOrBlank())
     val desktopPaired: StateFlow<Boolean> = _desktopPaired.asStateFlow()
 
     private val _isRunning = MutableStateFlow(false)
@@ -63,6 +74,8 @@ class PhoneLanIngestServer(
 
     private val _localAddresses = MutableStateFlow<List<String>>(emptyList())
     val localAddresses: StateFlow<List<String>> = _localAddresses.asStateFlow()
+
+    var onPairingStateChanged: (() -> Unit)? = null
 
     fun start() {
         if (server != null) return
@@ -77,12 +90,11 @@ class PhoneLanIngestServer(
                 }
                 get(DesktopLanProtocol.PATH_SETTINGS) {
                     val token = call.request.header(DesktopLanProtocol.HEADER_TOKEN)
-                    val expected = prefs.getString("token", null)
-                    if (token.isNullOrBlank() || token != expected) {
+                    if (!isAuthorized(token)) {
                         call.respondText("unauthorized", status = HttpStatusCode.Unauthorized)
                         return@get
                     }
-                    val settings = currentPhoneSettings()
+                    val settings = runBlocking { currentPhoneSettings() }
                     call.respondText(
                         DesktopLanJson.settingsToJson(settings),
                         ContentType.Application.Json,
@@ -92,7 +104,21 @@ class PhoneLanIngestServer(
                     val body = call.receiveText()
                     val req = DesktopLanJson.parsePairRequest(body)
                     val expected = _pairingCode.value
-                    if (req == null || expected == null || req.code != expected) {
+                    val now = System.currentTimeMillis()
+                    if (req == null || expected == null) {
+                        call.respondPairFailure("Invalid code")
+                        return@post
+                    }
+                    if (now > pairingCodeExpiresAtMs) {
+                        _pairingCode.value = null
+                        call.respondPairFailure("Code expired")
+                        return@post
+                    }
+                    if (!recordPairAttempt(now)) {
+                        call.respondPairFailure("Too many attempts")
+                        return@post
+                    }
+                    if (req.code != expected) {
                         call.respondText(
                             DesktopLanJson.pairResponseToJson(
                                 DesktopPairResponse(ok = false, message = "Invalid code"),
@@ -113,9 +139,13 @@ class PhoneLanIngestServer(
                         return@post
                     }
                     val token = UUID.randomUUID().toString()
-                    prefs.edit().putString("token", token).apply()
+                    authToken = token
+                    prefs.edit().putString("token", token).commit()
                     _pairingCode.value = null
+                    pairingCodeExpiresAtMs = 0L
+                    pairingAttemptCount = 0
                     _desktopPaired.value = true
+                    onPairingStateChanged?.invoke()
                     call.respondText(
                         DesktopLanJson.pairResponseToJson(
                             DesktopPairResponse(ok = true, token = token, message = "Paired"),
@@ -125,8 +155,7 @@ class PhoneLanIngestServer(
                 }
                 post(DesktopLanProtocol.PATH_EVENT) {
                     val token = call.request.header(DesktopLanProtocol.HEADER_TOKEN)
-                    val expected = prefs.getString("token", null)
-                    if (token.isNullOrBlank() || token != expected) {
+                    if (!isAuthorized(token)) {
                         call.respondText("unauthorized", status = HttpStatusCode.Unauthorized)
                         return@post
                     }
@@ -135,7 +164,7 @@ class PhoneLanIngestServer(
                         call.respondText("bad request", status = HttpStatusCode.BadRequest)
                         return@post
                     }
-                    scope.launch { handleEvent(event) }
+                    runBlocking { handleEvent(event) }
                     call.respondText("""{"ok":true}""", ContentType.Application.Json)
                 }
             }
@@ -150,11 +179,18 @@ class PhoneLanIngestServer(
         server?.stop(1000, 2000)
         server = null
         _isRunning.value = false
+        scope.cancel()
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 
     fun generatePairingCode(): String {
         val code = Random.nextInt(100000, 999999).toString()
         _pairingCode.value = code
+        pairingCodeExpiresAtMs = System.currentTimeMillis() + PAIR_CODE_TTL_MS
+        synchronized(pairAttemptLock) {
+            pairingAttemptCount = 0
+            pairingAttemptWindowStartMs = System.currentTimeMillis()
+        }
         return code
     }
 
@@ -166,9 +202,37 @@ class PhoneLanIngestServer(
     fun isPairedWithDesktop(): Boolean = _desktopPaired.value
 
     fun clearPairing() {
-        prefs.edit().remove("token").apply()
+        authToken = null
+        prefs.edit().remove("token").commit()
         _pairingCode.value = null
+        pairingCodeExpiresAtMs = 0L
         _desktopPaired.value = false
+        onPairingStateChanged?.invoke()
+    }
+
+    private fun isAuthorized(token: String?): Boolean {
+        if (token.isNullOrBlank()) return false
+        val expected = authToken ?: prefs.getString("token", null)?.also { authToken = it }
+        return token == expected
+    }
+
+    private fun recordPairAttempt(nowMs: Long): Boolean {
+        synchronized(pairAttemptLock) {
+            if (nowMs - pairingAttemptWindowStartMs > PAIR_ATTEMPT_WINDOW_MS) {
+                pairingAttemptWindowStartMs = nowMs
+                pairingAttemptCount = 0
+            }
+            pairingAttemptCount++
+            return pairingAttemptCount <= MAX_PAIR_ATTEMPTS
+        }
+    }
+
+    private suspend fun ApplicationCall.respondPairFailure(message: String) {
+        respondText(
+            DesktopLanJson.pairResponseToJson(DesktopPairResponse(ok = false, message = message)),
+            ContentType.Application.Json,
+            HttpStatusCode.Unauthorized,
+        )
     }
 
     private suspend fun handleEvent(event: DesktopSlumpEvent) {
@@ -177,7 +241,7 @@ class PhoneLanIngestServer(
                 historyRepository.addWorkSample(
                     seatedDeltaSec = event.seatedDeltaSec,
                     goodPostureDeltaSec = event.goodPostureDeltaSec,
-                    atMs = event.timestampMs.takeIf { it > 0 } ?: System.currentTimeMillis(),
+                    atMs = normalizeTimestampMs(event.timestampMs),
                 )
             }
             DesktopSlumpEventType.SLUMP_INITIAL,
@@ -187,7 +251,7 @@ class PhoneLanIngestServer(
                     PostureEvent(
                         eventType = PostureEventType.SLUMP_DETECTED,
                         durationSeconds = 0,
-                        timestamp = event.timestampMs,
+                        timestamp = normalizeTimestampMs(event.timestampMs),
                     ),
                 )
                 val alertsOn = preferencesRepository.alertsEnabled.first()
@@ -220,6 +284,11 @@ class PhoneLanIngestServer(
             alertsEnabled = preferencesRepository.alertsEnabled.first(),
         )
 
+    private fun normalizeTimestampMs(raw: Long): Long {
+        val now = System.currentTimeMillis()
+        return raw.takeIf { it in 1..now + CLOCK_SKEW_MS } ?: now
+    }
+
     private fun discoverIpv4Addresses(): List<String> {
         return try {
             NetworkInterface.getNetworkInterfaces().toList()
@@ -234,5 +303,9 @@ class PhoneLanIngestServer(
 
     companion object {
         private const val TAG = "PhoneLanIngest"
+        private const val PAIR_CODE_TTL_MS = 5 * 60 * 1000L
+        private const val PAIR_ATTEMPT_WINDOW_MS = 60 * 1000L
+        private const val MAX_PAIR_ATTEMPTS = 10
+        private const val CLOCK_SKEW_MS = 60_000L
     }
 }
