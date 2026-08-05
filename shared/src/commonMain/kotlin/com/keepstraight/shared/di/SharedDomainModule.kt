@@ -1,6 +1,5 @@
 package com.keepstraight.shared.di
 
-import com.keepstraight.shared.application.phone.CalibrationController
 import com.keepstraight.shared.application.phone.CompleteOnboardingUseCase
 import com.keepstraight.shared.application.phone.PairDesktopUseCase
 import com.keepstraight.shared.application.phone.PairingUseCase
@@ -13,7 +12,6 @@ import org.koin.dsl.module
 val sharedDomainModule = module {
     factory { PairingUseCase(get(), get()) }
     factory { PhoneWatchSettingsUseCase(get(), get()) }
-    factory { CalibrationController(get(), get()) }
     factory { PairDesktopUseCase(get()) }
     factory { ReconnectWatchUseCase(get()) }
     factory { RefreshWatchConnectionUseCase(get()) }

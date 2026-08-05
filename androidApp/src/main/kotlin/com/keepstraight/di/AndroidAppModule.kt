@@ -17,6 +17,7 @@ import com.keepstraight.presentation.settings.SettingsViewModel
 import com.keepstraight.presentation.shell.AppShellViewModel
 import com.keepstraight.shared.di.sharedDomainModule
 import com.keepstraight.shared.platform.BatteryOptimizationProbe
+import com.keepstraight.shared.application.phone.CalibrationController
 import com.keepstraight.shared.repository.DeviceSyncGateway
 import com.keepstraight.shared.repository.DesktopPairingGateway
 import com.keepstraight.shared.repository.PreferencesRepository
@@ -24,6 +25,7 @@ import com.keepstraight.sync.PhoneWearSyncManager
 import com.keepstraight.util.AndroidBatteryOptimizationProbe
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 
@@ -58,7 +60,13 @@ val androidPresentationModule = module {
     viewModel { WatchPairingViewModel(get(), get(), get()) }
     viewModel { DesktopPairingViewModel(get()) }
     viewModel { ConnectionViewModel(get(), get(), get()) }
-    viewModel { CalibrationViewModel(get(), get(), get()) }
+    viewModel {
+        CalibrationViewModel(
+            calibrationController = CalibrationController(get(), get()),
+            refreshConnection = get(),
+            deviceSyncGateway = get(),
+        )
+    }
 }
 
 val androidAppModule = module {
@@ -66,6 +74,7 @@ val androidAppModule = module {
 }
 
 fun startKeepStraightKoin(application: Application) {
+    if (GlobalContext.getOrNull() != null) return
     startKoin {
         androidContext(application)
         modules(sharedDomainModule, androidAppModule)
