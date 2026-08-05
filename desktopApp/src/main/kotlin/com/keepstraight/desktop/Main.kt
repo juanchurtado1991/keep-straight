@@ -20,6 +20,7 @@ import com.keepstraight.desktop.ui.i18n.DesktopMessageJvm
 import com.keepstraight.desktop.ui.i18n.DesktopStrings
 import com.keepstraight.desktop.ui.wizard.FirstRunWizard
 import com.keepstraight.shared.vision.WebcamBootstrap
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
@@ -28,6 +29,7 @@ import java.util.prefs.Preferences
 
 fun main() {
     WebcamBootstrap.ensureInitialized()
+    runBlocking { DesktopMessageJvm.warmUp() }
     application {
         val prefs = remember { Preferences.userRoot().node(DesktopPrefsKeys.ROOT) }
 
