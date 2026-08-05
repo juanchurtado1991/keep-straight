@@ -214,11 +214,10 @@ class DesktopSessionController(
     fun clearBridge() = bridgeStore.clearBridge()
 
     fun shutdown() {
-        bridgeStore.shutdown()
         sessionStore.stopSession()
+        bridgeStore.shutdown()
         cameraStore.shutdown()
         sessionStore.shutdown()
-        bridge.close()
         scope.cancel()
     }
 }
