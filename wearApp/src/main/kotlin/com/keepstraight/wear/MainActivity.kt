@@ -47,8 +47,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val app = application as KeepStraightWearApp
-            val state by app.monitoringSession.monitoringState.collectAsStateWithLifecycle()
-            val calibrating by app.monitoringSession.isCalibrating.collectAsStateWithLifecycle()
+            val state by app.monitoringStore.monitoringState.collectAsStateWithLifecycle()
+            val calibrating by app.monitoringStore.isCalibrating.collectAsStateWithLifecycle()
             MonitoringScreen(
                 state = state,
                 isCalibrating = calibrating,

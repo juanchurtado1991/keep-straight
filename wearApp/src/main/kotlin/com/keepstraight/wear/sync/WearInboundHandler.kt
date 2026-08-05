@@ -28,8 +28,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -43,9 +41,7 @@ class WearInboundHandler(
     DataClient.OnDataChangedListener {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val flushMutex = Mutex()
-    private val recentDeliveryKeys = ArrayDeque<String>()
-    private val deliveryLock = Any()
+    private val syncCoordinator = app.syncCoordinator
     private var lastCalibrateRequestAt = 0L
     private var lastDesktopAlertAt = 0L
 
@@ -133,7 +129,7 @@ class WearInboundHandler(
     }
 
     fun handlePath(path: String, payload: ByteArray, sourceNodeId: String) {
-        if (!acceptDelivery(path, payload, sourceNodeId)) {
+        if (!syncCoordinator.acceptDelivery(path, payload, sourceNodeId)) {
             Log.i(TAG, "Skipping duplicate $path from $sourceNodeId")
             return
         }
@@ -167,14 +163,9 @@ class WearInboundHandler(
                     session.updateAlertPreferences(preferences)
                 }
 
-                SyncPaths.SYNC_REQUEST -> {
-                    scope.launch { flushPendingEvents(sourceNodeId) }
-                }
+                SyncPaths.SYNC_REQUEST -> syncCoordinator.handleSyncRequest(sourceNodeId)
 
-                SyncPaths.SYNC_ACK -> {
-                    PostureMonitoringService.cancelRetryCycle(app)
-                    session.setPhoneRetryActive(false)
-                }
+                SyncPaths.SYNC_ACK -> syncCoordinator.handleSyncAck()
             }
         } catch (error: Exception) {
             Log.e(TAG, "Failed handling $path", error)
@@ -244,49 +235,7 @@ class WearInboundHandler(
     }
 
     fun retryPendingSyncFromAlarm() {
-        scope.launch { flushPendingEventsToPhone() }
-    }
-
-    private suspend fun flushPendingEvents(nodeId: String) {
-        flushMutex.withLock {
-            val batch = app.pendingSyncQueue.takeBatch() ?: return
-            val batchBytes = Ghost.encodeToBytes(batch)
-            val sender = WearMessageSender(app)
-            val sent = sender.sendToNode(nodeId, SyncPaths.EVENTS_BATCH, batchBytes)
-            if (sent) {
-                PostureMonitoringService.cancelRetryCycle(app)
-                app.monitoringSession.setPhoneRetryActive(false)
-            } else {
-                app.pendingSyncQueue.reenqueue(batch)
-            }
-        }
-    }
-
-    private suspend fun flushPendingEventsToPhone() {
-        flushMutex.withLock {
-            val batch = app.pendingSyncQueue.takeBatch() ?: return
-            val batchBytes = Ghost.encodeToBytes(batch)
-            val sender = WearMessageSender(app)
-            val sent = sender.sendToPhone(SyncPaths.EVENTS_BATCH, batchBytes)
-            if (sent) {
-                PostureMonitoringService.cancelRetryCycle(app)
-                app.monitoringSession.setPhoneRetryActive(false)
-            } else {
-                app.pendingSyncQueue.reenqueue(batch)
-            }
-        }
-    }
-
-    private fun acceptDelivery(path: String, payload: ByteArray, sourceNodeId: String): Boolean {
-        val key = "$path|$sourceNodeId|${payload.contentHashCode()}"
-        synchronized(deliveryLock) {
-            if (recentDeliveryKeys.contains(key)) return false
-            recentDeliveryKeys.addLast(key)
-            while (recentDeliveryKeys.size > MAX_RECENT_DELIVERIES) {
-                recentDeliveryKeys.removeFirst()
-            }
-            return true
-        }
+        syncCoordinator.retryPendingSyncFromAlarm()
     }
 
     private companion object {
@@ -295,6 +244,5 @@ class WearInboundHandler(
         const val WAKE_MS = 20_000L
         const val ALERT_WAKE_MS = 3_000L
         const val CAPABILITY_DUPLICATE = 4006
-        const val MAX_RECENT_DELIVERIES = 32
     }
 }
