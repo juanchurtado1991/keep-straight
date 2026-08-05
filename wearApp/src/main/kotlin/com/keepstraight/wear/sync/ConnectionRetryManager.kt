@@ -28,14 +28,8 @@ class ConnectionRetryManager(
     }
 
     fun cancelRetryCycle() {
-        alarmManager.cancel(retryPendingIntent())
-        prefs.edit()
-            .remove(KEY_RETRY_STARTED_AT)
-            .remove(KEY_RETRY_COUNT)
-            .apply()
+        cancelRetryCycle(context)
     }
-
-    fun isRetryActive(): Boolean = prefs.contains(KEY_RETRY_STARTED_AT)
 
     fun handleRetryAlarm() {
         val startedAt = prefs.getLong(KEY_RETRY_STARTED_AT, 0L)
@@ -63,21 +57,36 @@ class ConnectionRetryManager(
         )
     }
 
-    private fun retryPendingIntent(): PendingIntent {
-        val intent = Intent(context, ConnectionRetryReceiver::class.java)
-        return PendingIntent.getBroadcast(
-            context,
-            REQUEST_CODE,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
+    private fun retryPendingIntent(): PendingIntent = retryPendingIntent(context)
 
     companion object {
         const val PREFS_NAME = "connection_retry"
         const val KEY_RETRY_STARTED_AT = "retry_started_at"
         const val KEY_RETRY_COUNT = "retry_count"
         private const val REQUEST_CODE = 1001
+
+        fun isRetryActive(context: Context): Boolean =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .contains(KEY_RETRY_STARTED_AT)
+
+        fun cancelRetryCycle(context: Context) {
+            val alarmManager = context.getSystemService(AlarmManager::class.java)
+            alarmManager.cancel(retryPendingIntent(context))
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+                .remove(KEY_RETRY_STARTED_AT)
+                .remove(KEY_RETRY_COUNT)
+                .apply()
+        }
+
+        private fun retryPendingIntent(context: Context): PendingIntent {
+            val intent = Intent(context, ConnectionRetryReceiver::class.java)
+            return PendingIntent.getBroadcast(
+                context,
+                REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
     }
 }
 

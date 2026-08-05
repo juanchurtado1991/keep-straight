@@ -303,12 +303,12 @@ class PostureMonitoringService : Service(), SensorEventListener {
         fun handleRetryAlarm(context: Context) {
             instance?.connectionRetryManager?.handleRetryAlarm()
                 ?: run {
+                    val app = context.applicationContext as KeepStraightWearApp
                     val manager = ConnectionRetryManager(
                         context = context,
-                        onRetry = { getPendingSyncQueue(context)?.let { /* no-op without service */ } },
+                        onRetry = { app.inboundHandler.retryPendingSyncFromAlarm() },
                         onRetryExhausted = {
-                            (context.applicationContext as KeepStraightWearApp)
-                                .monitoringSession.setPhoneDisconnectedPaused()
+                            app.monitoringSession.setPhoneDisconnectedPaused()
                         },
                     )
                     manager.handleRetryAlarm()
@@ -316,7 +316,7 @@ class PostureMonitoringService : Service(), SensorEventListener {
         }
 
         fun cancelRetryCycle(context: Context) {
-            instance?.connectionRetryManager?.cancelRetryCycle()
+            ConnectionRetryManager.cancelRetryCycle(context)
         }
 
         fun isMonitoringEnabled(context: Context): Boolean {
