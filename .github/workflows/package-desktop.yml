@@ -94,15 +94,15 @@ jobs:
         include:
           - os: windows-latest
             target: windows
-            tasks: ":desktopApp:packageReleaseExe :desktopApp:packageReleaseMsi"
+            tasks: ":desktopApp:packageExe :desktopApp:packageMsi"
             patterns: "*.exe *.msi"
           - os: macos-latest
             target: macos
-            tasks: ":desktopApp:packageReleaseDmg"
+            tasks: ":desktopApp:packageDmg"
             patterns: "*.dmg"
           - os: ubuntu-latest
             target: linux
-            tasks: ":desktopApp:packageReleaseDeb"
+            tasks: ":desktopApp:packageDeb"
             patterns: "*.deb"
 
     steps:

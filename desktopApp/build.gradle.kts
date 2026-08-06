@@ -39,6 +39,11 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "com.keepstraight.desktop.MainKt"
+        // Release packaging tasks run ProGuard by default; we ship ONNX/Ktor/Ghost via
+        // reflection and have no keep rules yet — disable until explicitly configured.
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "KeepStraight"
